@@ -44,11 +44,16 @@ void DkFileSelection::createLayout() {
 	
 	QPushButton* browseButton = new QPushButton(tr("Browse"));
 	connect(browseButton, SIGNAL(clicked()), this, SLOT(browse()));
-	
+
+	fileWidget = new QListWidget();
+	fileWidget->setStyleSheet("QListView::item:alternate{background: #BBB;}");
+	//fileWidget->setModel(fileModel);
+
 	QGridLayout* fsLayout = new QGridLayout(this);
 	fsLayout->addWidget(filterEdit, 0, 0, 1, 4);
 	fsLayout->addWidget(browseButton, 0, 4);
-	fsLayout->setRowStretch(2, 300);
+	fsLayout->addWidget(fileWidget, 1, 0, 1, 5);	// change to 4 if we support thumbs
+	//fsLayout->setRowStretch(2, 300);
 
 	setLayout(fsLayout);
 }
@@ -71,7 +76,20 @@ void DkFileSelection::indexDir() {
 
 	emit dirSignal(cDir.absolutePath());
 	
+	fileWidget->clear();
+	
 	// TODO: index directory
+	// true file list
+	cDir.setSorting(QDir::LocaleAware);
+	QStringList fileList = cDir.entryList(DkImageLoader::fileFilters);
+
+	for (int idx = 0; idx < fileList.size(); idx++) {
+
+		QListWidgetItem* item = new QListWidgetItem(fileList.at(idx), fileWidget);
+		item->setCheckState(Qt::Unchecked);
+
+	}
+
 }
 
 // Batch Dialog --------------------------------------------------------------------

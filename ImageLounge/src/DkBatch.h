@@ -31,6 +31,8 @@
 #include <QDialogButtonBox>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QListWidget>
+#include <QListWidgetItem>
 
 #include "DkWidgets.h"
 
@@ -62,6 +64,8 @@ protected:
 	void createLayout();
 
 	QDir cDir;
+	QListWidget* fileWidget;
+	//DkFileModel* fileModel;
 };
 
 class DkBatchDialog : public QDialog {
