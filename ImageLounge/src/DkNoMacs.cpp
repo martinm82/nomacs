@@ -70,6 +70,7 @@ DkNoMacs::DkNoMacs(QWidget *parent, Qt::WFlags flags)
 	progressDialog = 0;
 	forceDialog = 0;
 	trainDialog = 0;
+	batchDialog = 0;
 
 	// start localhost client/server
 	//localClientManager = new DkLocalClientManager(windowTitle());
@@ -429,6 +430,7 @@ void DkNoMacs::createMenu() {
 	fileMenu->addSeparator();
 	fileMenu->addAction(fileActions[menu_file_print]);
 	fileMenu->addSeparator();
+	fileMenu->addAction(fileActions[menu_file_batch]);
 	fileMenu->addAction(fileActions[menu_file_goto]);
 	fileMenu->addAction(fileActions[menu_file_find]);
 	fileMenu->addAction(fileActions[menu_file_reload]);
@@ -639,6 +641,11 @@ void DkNoMacs::createActions() {
 	fileActions[menu_file_find]->setShortcut(QKeySequence::Find);
 	fileActions[menu_file_find]->setStatusTip(tr("Find an image"));
 	connect(fileActions[menu_file_find], SIGNAL(triggered()), this, SLOT(find()));
+
+	fileActions[menu_file_batch] = new QAction(tr("&Batch Convert"), this);
+	//fileActions[menu_file_batch]->setShortcut(QKeySequence::Find);
+	fileActions[menu_file_batch]->setStatusTip(tr("Convert a bunch of images"));
+	connect(fileActions[menu_file_batch], SIGNAL(triggered()), this, SLOT(batchConvert()));
 
 	//fileActions[menu_file_share_fb] = new QAction(tr("Share on &Facebook"), this);
 	////fileActions[menu_file_share_fb]->setShortcuts(QKeySequence::Close);
@@ -1008,6 +1015,7 @@ void DkNoMacs::enableNoImageActions(bool enable) {
 	fileActions[menu_file_prev]->setEnabled(enable);
 	fileActions[menu_file_next]->setEnabled(enable);
 	fileActions[menu_file_goto]->setEnabled(enable);
+	fileActions[menu_file_batch]->setEnabled(enable);
 
 	editActions[menu_edit_rotate_cw]->setEnabled(enable);
 	editActions[menu_edit_rotate_ccw]->setEnabled(enable);
@@ -1846,6 +1854,17 @@ void DkNoMacs::find(bool filterAction) {
 	}
 
 
+}
+
+void DkNoMacs::batchConvert() {
+
+	if (!batchDialog)
+		batchDialog = new DkBatchDialog(this);
+
+	DkFileSelection* fs = batchDialog->getFileSelection();
+	if (fs)	fs->setDir(viewport()->getImageLoader()->getDir());
+
+	batchDialog->exec();
 }
 
 void DkNoMacs::updateFilterState(QStringList filters) {

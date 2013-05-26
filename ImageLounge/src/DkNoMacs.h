@@ -84,6 +84,7 @@ using namespace cv;
 #include "DkMenu.h"
 #include "DkTransferToolBar.h"
 #include "DkManipulationWidgets.h"
+#include "DkBatch.h"
 
 #ifdef DK_DLL
 #define DllExport __declspec(dllexport)
@@ -194,6 +195,7 @@ enum fileActions {
 	menu_file_rename,
 	menu_file_goto,
 	menu_file_find,
+	menu_file_batch,
 	menu_file_print,
 	menu_file_reload,
 	menu_file_next,
@@ -424,6 +426,7 @@ public slots:
 	void renameFile();
 	void goTo();
 	void find(bool filterAction = true);
+	void batchConvert();
 	void updateFilterState(QStringList filters);
 	void saveFile();
 	void trainFormat();
@@ -565,6 +568,7 @@ protected:
 	QProgressDialog* progressDialog;
 	DkForceThumbDialog* forceDialog;
 	DkTrainDialog* trainDialog;
+	DkBatchDialog* batchDialog;
 
 	DkImageManipulationDialog* imgManipulationDialog;
 
