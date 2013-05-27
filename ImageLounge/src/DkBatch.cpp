@@ -29,6 +29,50 @@
 
 namespace nmc {
 
+// File Model --------------------------------------------------------------------
+DkFileModel::DkFileModel(QObject* parent) : QAbstractListModel(parent) {
+
+}
+
+QVariant DkFileModel::data(const QModelIndex &index, int role) const {
+
+	//if (!index.isValid())
+	//	return QVariant();
+
+	// nothing is happening here... damn
+	qDebug() << "returning data";
+	//if (fileData.at(index.row()))
+		return 5;
+
+
+
+	//return QVariant();
+}
+
+int DkFileModel::rowCount(const QModelIndex &parent) const {
+
+	qDebug() << "returning: " << fileData.size();
+	return fileData.size();
+}
+
+void DkFileModel::setFileList(const QStringList& list) {
+
+	for (int idx = 0; idx < fileData.size(); idx++) {
+
+		if (fileData.at(idx))
+			delete fileData.at(idx);
+	}
+
+	fileData.clear();
+
+	for (int idx = 0; idx < list.size(); idx++) {
+		
+		QCheckBox* cb = new QCheckBox(list.at(idx));
+		fileData.append(cb);
+	}
+
+}
+
 // File Selection --------------------------------------------------------------------
 DkFileSelection::DkFileSelection(QWidget* parent /* = 0 */, Qt::WindowFlags f /* = 0 */) : QLabel(parent, f) {
 
@@ -45,9 +89,11 @@ void DkFileSelection::createLayout() {
 	QPushButton* browseButton = new QPushButton(tr("Browse"));
 	connect(browseButton, SIGNAL(clicked()), this, SLOT(browse()));
 
-	fileWidget = new QListWidget();
-	fileWidget->setStyleSheet("QListView::item:alternate{background: #BBB;}");
-	//fileWidget->setModel(fileModel);
+	fileModel = new DkFileModel();
+
+	fileWidget = new QListView();
+	//fileWidget->setStyleSheet("QListView::item:alternate{background: #BBB;}");
+	fileWidget->setModel(fileModel);
 
 	QGridLayout* fsLayout = new QGridLayout(this);
 	fsLayout->addWidget(filterEdit, 0, 0, 1, 4);
@@ -76,19 +122,20 @@ void DkFileSelection::indexDir() {
 
 	emit dirSignal(cDir.absolutePath());
 	
-	fileWidget->clear();
+	//fileWidget->clear();
 	
 	// TODO: index directory
 	// true file list
 	cDir.setSorting(QDir::LocaleAware);
 	QStringList fileList = cDir.entryList(DkImageLoader::fileFilters);
+	fileModel->setFileList(fileList);
 
-	for (int idx = 0; idx < fileList.size(); idx++) {
+	//for (int idx = 0; idx < fileList.size(); idx++) {
 
-		QListWidgetItem* item = new QListWidgetItem(fileList.at(idx), fileWidget);
-		item->setCheckState(Qt::Unchecked);
+	//	QListWidgetItem* item = new QListWidgetItem(fileList.at(idx), fileWidget);
+	//	item->setCheckState(Qt::Unchecked);
 
-	}
+	//}
 
 }
 

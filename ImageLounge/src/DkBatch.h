@@ -38,6 +38,20 @@
 
 namespace nmc {
 
+class DkFileModel : public QAbstractListModel {
+	Q_OBJECT
+
+public:
+	DkFileModel(QObject* parent = 0);
+
+	void setFileList(const QStringList& list);
+	virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
+	virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
+
+protected:
+	QVector<QCheckBox*> fileData;
+};
+
 class DkFileSelection : public QLabel {
 	Q_OBJECT
 
@@ -64,8 +78,8 @@ protected:
 	void createLayout();
 
 	QDir cDir;
-	QListWidget* fileWidget;
-	//DkFileModel* fileModel;
+	QListView* fileWidget;
+	DkFileModel* fileModel;
 };
 
 class DkBatchDialog : public QDialog {
