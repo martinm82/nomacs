@@ -922,5 +922,20 @@ protected:
 	QCheckBox* cbForceSave;
 };
 
+// >NIKON: if you create a dock widget for e.g. aparture settings, put it here like: [23.1.2014 markus]
+// important: no code in the header!
+class DkNikonSettings : public QDockWidget {
+	Q_OBJECT
+
+public:
+	DkNikonSettings(const QString & title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
+
+	QImage someOtherPublicFunction();
+
+public slots:
+	virtual void setVisible(bool visible);
+
+};
+
 
 }

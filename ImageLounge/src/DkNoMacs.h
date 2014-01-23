@@ -323,6 +323,15 @@ enum helpActions {
 	menu_help_end,	// nothing beyond this point
 };
 
+// >NIKON: add your menu entries here [23.1.2014 markus]
+// the default actions such as a shortcut to save RAW should be added to the fileActions etc.
+// if you need more than 1-2 actions you can create an enum here:
+// enum nikonActions {
+//		menu_nikon_open_dock,
+//
+//		menu_nikon_end,		// this is important!
+// }
+
 enum shortcuts {
 	sc_test_img,
 	sc_test_rec,

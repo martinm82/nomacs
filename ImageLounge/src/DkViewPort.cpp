@@ -821,8 +821,6 @@ void DkViewPort::loadImage(QImage newImg) {
 
 void DkViewPort::setImage(QImage newImg) {
 
-	// NIKON-API: call this function to update the image in the live stream
-
 	DkTimer dt;
 
 	emit movieLoadedSignal(false);
