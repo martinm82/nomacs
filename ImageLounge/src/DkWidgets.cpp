@@ -1815,6 +1815,49 @@ bool DkSortFileProxyModel::lessThan(const QModelIndex& left, const QModelIndex& 
 	return QSortFilterProxyModel::lessThan(left, right);
 }
 
+// DkCamControls --------------------------------------------------------------------
+#ifdef WITH_CAMCONTROLS
+DkCamControls::DkCamControls(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
+
+	setObjectName("DkCamControls");
+	createLayout();
+	//readSettings();
+}
+
+DkCamControls::~DkCamControls() {
+	//writeSettings();
+}
+
+void DkCamControls::createLayout() {
+	widget = new QWidget(this);
+	layout = new QVBoxLayout(widget);
+	widget->setLayout(layout);
+
+	connectButton = new QPushButton(tr("Connect device..."), widget);
+	
+	layout->addWidget(connectButton);
+	setWidget(widget);
+}
+
+void DkCamControls::closeEvent(QCloseEvent* event) {
+	//writeSettings();
+}
+
+#else
+DkCamControls::DkCamControls(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
+	setObjectName("DkCamControls");
+}
+
+DkCamControls::~DkCamControls() {
+}
+
+void DkCamControls::createLayout() {
+}
+
+void DkCamControls::closeEvent(QCloseEvent* event) {
+}
+#endif
+
 // DkExplorer --------------------------------------------------------------------
 DkExplorer::DkExplorer(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
 

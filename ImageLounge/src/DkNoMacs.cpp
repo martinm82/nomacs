@@ -86,6 +86,7 @@ DkNoMacs::DkNoMacs(QWidget *parent, Qt::WFlags flags)
 	trainDialog = 0;
 	explorer = 0;
 	appManager = 0;
+	camControls = 0;
 
 	// start localhost client/server
 	//localClientManager = new DkLocalClientManager(windowTitle());
@@ -620,6 +621,9 @@ void DkNoMacs::createMenu() {
 	panelMenu->addAction(panelActions[menu_panel_thumbview]);
 	panelMenu->addAction(panelActions[menu_panel_scroller]);
 	panelMenu->addAction(panelActions[menu_panel_exif]);
+#ifdef WITH_CAMCONTROLS
+	panelMenu->addAction(panelActions[menu_panel_camera]);
+#endif
 	
 	panelMenu->addSeparator();
 	
@@ -1018,6 +1022,14 @@ void DkNoMacs::createActions() {
 	panelActions[menu_panel_histogram]->setCheckable(true);
 	connect(panelActions[menu_panel_histogram], SIGNAL(toggled(bool)), vp->getController(), SLOT(showHistogram(bool)));
 
+#ifdef WITH_CAMCONTROLS
+	panelActions[menu_panel_camera] = new QAction(tr("&Camera Controls"), this);
+	panelActions[menu_panel_camera]->setShortcut(QKeySequence(shortcut_show_camcontrols));
+	panelActions[menu_panel_camera]->setStatusTip(tr("Shows the Camera Controls"));
+	panelActions[menu_panel_camera]->setCheckable(true);
+	connect(panelActions[menu_panel_camera], SIGNAL(toggled(bool)), this, SLOT(showCamControls(bool)));
+#endif
+
 	viewActions.resize(menu_view_end);
 	viewActions[menu_view_fit_frame] = new QAction(tr("&Fit Window"), this);
 	viewActions[menu_view_fit_frame]->setShortcut(QKeySequence(shortcut_fit_frame));
@@ -1337,6 +1349,9 @@ void DkNoMacs::closeEvent(QCloseEvent *event) {
 		
 		if (explorer)
 			settings.setValue("explorerLocation", QMainWindow::dockWidgetArea(explorer));
+
+		if (camControls)
+			settings.setValue("camControlsLocation", QMainWindow::dockWidgetArea(camControls));
 
 		DkSettings::save();
 	}
@@ -1970,6 +1985,21 @@ void DkNoMacs::showExplorer(bool show) {
 			explorer->setCurrentPath(folders[0]);
 	}
 
+}
+
+void DkNoMacs::showCamControls(bool show) {
+#ifdef WITH_CAMCONTROLS
+	if (!camControls) {
+		// get last location
+		QSettings settings;
+		int dockLocation = settings.value("camControlsLocation", Qt::TopDockWidgetArea).toInt();
+		
+		camControls = new DkCamControls(tr("Camera Controls"));
+		addDockWidget((Qt::DockWidgetArea)dockLocation, camControls);
+	}
+
+	camControls->setVisible(show);
+#endif
 }
 
 void DkNoMacs::openDir() {

@@ -1663,4 +1663,20 @@ protected:
 	QSpinBox* sliderBox;
 };
 
+class DkCamControls : public QDockWidget {
+	Q_OBJECT
+
+public:
+	DkCamControls(const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
+	~DkCamControls();
+
+protected:
+	void closeEvent(QCloseEvent *event);
+	void createLayout();
+
+	QWidget* widget;
+	QVBoxLayout* layout;
+	QPushButton* connectButton;
+};
+
 };

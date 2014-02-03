@@ -53,6 +53,8 @@
 #include <QDesktopWidget>
 #include <QProgressDialog>
 
+#define WITH_CAMCONTROLS // TODO this should be set in cmake
+
 // OpenCV
 #ifdef WITH_OPENCV
 
@@ -105,6 +107,7 @@ class DkLocalManagerThread;
 class DkLanManagerThread;
 class DkTransferToolBar;
 class DkAppManager;
+class DkCamControls;
 
 
 // keyboard shortcuts
@@ -154,6 +157,9 @@ enum {
 	shortcut_show_explorer	= Qt::Key_E,
 	shortcut_show_player	= Qt::Key_P,
 	shortcut_show_exif		= Qt::Key_M,
+#ifdef WITH_CAMCONTROLS
+	shortcut_show_camcontrols = Qt::CTRL + Qt::ALT + Qt::Key_C,
+#endif
 	shortcut_show_info		= Qt::Key_I,
 	shortcut_show_histogram	= Qt::Key_H,
 	shortcut_opacity_down	= Qt::CTRL + Qt::Key_H,
@@ -270,6 +276,9 @@ enum panelActions {
 	menu_panel_histogram,
 	menu_panel_overview,
 	menu_panel_explorer,
+#ifdef WITH_CAMCONTROLS
+	menu_panel_camera,
+#endif
 
 	menu_panel_end,
 };
@@ -511,6 +520,7 @@ public slots:
 	void enableMovieActions(bool enable);
 	void clearFileHistory();
 	void clearFolderHistory();
+	void showCamControls(bool show);
 	//void shareFacebook();
 
 	// batch actions
@@ -618,6 +628,9 @@ protected:
 	DkImageManipulationDialog* imgManipulationDialog;
 
 	DkAppManager* appManager;
+
+	// camera controls
+	DkCamControls* camControls;
 
 	// client managers
 	//DkLocalClientManager* localClientManager;
