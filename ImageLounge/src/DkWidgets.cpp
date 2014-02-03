@@ -29,6 +29,8 @@
 
 #include "DkNoMacs.h"
 
+#include "FlowLayout.h"
+
 namespace nmc {
 
 DkWidget::DkWidget(QWidget* parent, Qt::WFlags flags) : QWidget(parent, flags) {
@@ -1829,19 +1831,85 @@ DkCamControls::~DkCamControls() {
 }
 
 void DkCamControls::createLayout() {
-	widget = new QWidget(this);
-	layout = new QVBoxLayout(widget);
-	widget->setLayout(layout);
+	widget = new QWidget();
+	mainLayout = new QVBoxLayout();
+	widget->setLayout(mainLayout);
 
-	connectButton = new QPushButton(tr("Connect device..."), widget);
+	QHBoxLayout* connectionLayout = new QHBoxLayout();
+	lensAttachedLabel = new QLabel();
+	updateLensAttachedLabel(false);
+	connectButton = new QPushButton(tr("Connect device..."));
+	connectionLayout->addWidget(connectButton);
+	connectionLayout->addWidget(lensAttachedLabel);
+	connectionLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	mainLayout->addLayout(connectionLayout);
+
+	FlowLayout* flowLayout = new FlowLayout();
+
+	QWidget* exposureModeWidget = new QWidget();
+	QHBoxLayout* exposureModeLayout = new QHBoxLayout();
+	QLabel* exposureModeLabel = new QLabel(tr("Exposure Mode"));
+	exposureModeCombo = new QComboBox();
+	exposureModeLayout->addWidget(exposureModeLabel);
+	exposureModeLayout->addWidget(exposureModeCombo);
+	exposureModeWidget->setLayout(exposureModeLayout);
+
+	QWidget* apertureWidget = new QWidget();
+	QHBoxLayout* apertureLayout = new QHBoxLayout();
+	QLabel* apertureLabel = new QLabel(tr("Aperture"));
+	apertureCombo = new QComboBox();
+	apertureLayout->addWidget(apertureLabel);
+	apertureLayout->addWidget(apertureCombo);
+	apertureWidget->setLayout(apertureLayout);
+
+	QWidget* isoWidget = new QWidget();
+	QHBoxLayout* isoLayout = new QHBoxLayout();
+	QLabel* isoLabel = new QLabel(tr("Sensitivity (ISO)"));
+	isoCombo = new QComboBox();
+	isoLayout->addWidget(isoLabel);
+	isoLayout->addWidget(isoCombo);
+	isoWidget->setLayout(isoLayout);
+
+	QWidget* shutterSpeedWidget = new QWidget();
+	QHBoxLayout* shutterSpeedLayout = new QHBoxLayout();
+	QLabel* shutterSpeedLabel = new QLabel(tr("Shutter Speed"));
+	shutterSpeedCombo = new QComboBox();
+	shutterSpeedLayout->addWidget(shutterSpeedLabel);
+	shutterSpeedLayout->addWidget(shutterSpeedCombo);
+	shutterSpeedWidget->setLayout(shutterSpeedLayout);
+
+	flowLayout->addWidget(exposureModeWidget);
+	flowLayout->addWidget(apertureWidget);
+	flowLayout->addWidget(isoWidget);
+	flowLayout->addWidget(shutterSpeedWidget);
+	mainLayout->addLayout(flowLayout);
+
+	QHBoxLayout* buttonsLayout = new QHBoxLayout();
+	shootButton = new QPushButton(tr("Shoot"));
+	shootAfButton = new QPushButton(tr("Shoot with AF"));
+	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	buttonsLayout->addWidget(shootButton);
+	buttonsLayout->addWidget(shootAfButton);
+	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	mainLayout->addLayout(buttonsLayout);
+
+	mainLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
 	
-	layout->addWidget(connectButton);
 	setWidget(widget);
 }
 
 void DkCamControls::closeEvent(QCloseEvent* event) {
 	//writeSettings();
 }
+
+void DkCamControls::updateLensAttachedLabel(bool attached) {
+	if (attached) {
+		lensAttachedLabel->setText(tr(""));
+	} else {
+		lensAttachedLabel->setText(tr("No lens attached"));
+	}
+}
+
 
 #else
 DkCamControls::DkCamControls(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
@@ -1855,6 +1923,9 @@ void DkCamControls::createLayout() {
 }
 
 void DkCamControls::closeEvent(QCloseEvent* event) {
+}
+
+void DkCamControls::updateConnectionStatusLabel(bool connected) {
 }
 #endif
 

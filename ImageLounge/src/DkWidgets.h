@@ -1673,10 +1673,18 @@ public:
 protected:
 	void closeEvent(QCloseEvent *event);
 	void createLayout();
+	void updateLensAttachedLabel(bool attached);
 
 	QWidget* widget;
-	QVBoxLayout* layout;
+	QVBoxLayout* mainLayout;
 	QPushButton* connectButton;
+	QLabel* lensAttachedLabel;
+	QComboBox* exposureModeCombo;
+	QComboBox* isoCombo;
+	QComboBox* apertureCombo;
+	QComboBox* shutterSpeedCombo;
+	QPushButton* shootButton;
+	QPushButton* shootAfButton;
 };
 
 };
