@@ -45,7 +45,7 @@ public:
 	typedef std::pair<MaidFacade::StringValues, bool> MaybeStringValues;
 	typedef std::pair<MaidFacade::UnsignedValues, bool> MaybeUnsignedValues;
 
-	MaidFacade(std::function<void(unsigned long)> capValueChangeCallback);
+	MaidFacade();
 	~MaidFacade() {}
 
 	// callbacks are public because they have to be called from a function outside the class
@@ -53,7 +53,7 @@ public:
 
 	void init();
 	std::set<ULONG> listDevices();
-	void openSource(ULONG id);
+	void openSource(ULONG id, std::function<void(unsigned long)> capValueChangeCallback);
 	bool checkCameraType();
 	void closeModule();
 	void closeSource();

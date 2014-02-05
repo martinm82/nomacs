@@ -435,8 +435,6 @@ public:
 
 	static void updateAll();
 
-	void capabilityValueChanged(unsigned long capId);
-
 	bool saveSettings;
 
 signals:
@@ -632,16 +630,6 @@ protected:
 	// camera controls
 	DkCamControls* camControls;
 	MaidFacade* maidFacade;
-
-	void updateCameraUiValues();
-	void updateExposureModeDependentUiValues();
-	void updateAperture();
-	void updateApertureLabel(const std::string& value = std::string());
-	void updateSensitivity();
-	void updateSensitivityLabel(const std::string& value = std::string());
-	void updateShutterSpeed();
-	void updateShutterSpeedLabel(const std::string& value = std::string());
-	void updateExposureMode();
 
 	// client managers
 	//DkLocalClientManager* localClientManager;

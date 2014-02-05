@@ -12,8 +12,7 @@ using nmc::MaidFacade;
 using Maid::MaidUtil;
 using Maid::MaidObject;
 
-MaidFacade::MaidFacade(std::function<void(ULONG)> capValueChangeCallback) 
-	: capValueChangeCallback(capValueChangeCallback), lensAttached(false) {
+MaidFacade::MaidFacade() : lensAttached(false) {
 }
 
 /*!
@@ -53,10 +52,11 @@ std::set<ULONG> MaidFacade::listDevices() {
 /*!
  * throws OpenCloseObjectError
  */
-void MaidFacade::openSource(ULONG id) {
+void MaidFacade::openSource(ULONG id, std::function<void(ULONG)> capValueChangeCallback) {
 	//mutex.lock();
 	sourceObject.reset(MaidObject::create(id, moduleObject.get()));
 	sourceObject->setEventCallback(this, eventProc);
+	capValueChangeCallback = capValueChangeCallback;
 	//sourceObject->setProgressCallback(progressProc);
 	//mutex.unlock();
 }
@@ -286,7 +286,6 @@ void MaidFacade::sourceIdleLoop(ULONG* count) {
 }
 
 bool MaidFacade::shoot() {
-	bool ret;
 	ULONG captureCount = 0;
 	ULONG acquireCount = 0;
 	
