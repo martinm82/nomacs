@@ -38,7 +38,7 @@
 #include "DkMenu.h"
 #include "DkToolbars.h"
 #include "DkManipulationWidgets.h"
-
+#include "MaidFacade.h"
 
 namespace nmc {
 
@@ -211,6 +211,9 @@ void DkNoMacs::init() {
 	connect(viewport(), SIGNAL(movieLoadedSignal(bool)), this, SLOT(enableMovieActions(bool)));
 
 	enableMovieActions(false);
+
+	maidFacade = new MaidFacade([&] (unsigned long cap) { capabilityValueChanged(cap); });
+	maidFacade->init();
 
 // clean up nomacs
 #ifdef Q_WS_WIN
@@ -1987,21 +1990,6 @@ void DkNoMacs::showExplorer(bool show) {
 
 }
 
-void DkNoMacs::showCamControls(bool show) {
-#ifdef WITH_CAMCONTROLS
-	if (!camControls) {
-		// get last location
-		QSettings settings;
-		int dockLocation = settings.value("camControlsLocation", Qt::RightDockWidgetArea).toInt();
-		
-		camControls = new DkCamControls(tr("Camera Controls"));
-		addDockWidget((Qt::DockWidgetArea)dockLocation, camControls);
-	}
-
-	camControls->setVisible(show);
-#endif
-}
-
 void DkNoMacs::openDir() {
 
 	DkImageLoader* loader = viewport()->getImageLoader();
@@ -3224,6 +3212,27 @@ int DkNoMacs::infoDialog(QString msg, QWidget* parent, QString title) {
 	return errorDialog.exec();
 }
 
+// MAID / Camera stuff -------------------------------------------------------------
+
+void DkNoMacs::showCamControls(bool show) {
+#ifdef WITH_CAMCONTROLS
+	if (!camControls) {
+		// get last location
+		QSettings settings;
+		int dockLocation = settings.value("camControlsLocation", Qt::RightDockWidgetArea).toInt();
+		
+		camControls = new DkCamControls(tr("Camera Controls"));
+		addDockWidget((Qt::DockWidgetArea)dockLocation, camControls);
+	}
+
+	camControls->setVisible(show);
+#endif
+}
+
+void DkNoMacs::capabilityValueChanged(unsigned long capId) {
+#ifdef WITH_CAMCONTROLS
+#endif
+}
 
 // DkNoMacsSync --------------------------------------------------------------------
 DkNoMacsSync::DkNoMacsSync(QWidget *parent, Qt::WFlags flags) : DkNoMacs(parent, flags) {

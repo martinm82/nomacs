@@ -108,7 +108,7 @@ class DkLanManagerThread;
 class DkTransferToolBar;
 class DkAppManager;
 class DkCamControls;
-
+class MaidFacade;
 
 // keyboard shortcuts
 //we can change the keyboard shortcuts from here !
@@ -437,6 +437,8 @@ public:
 
 	static void updateAll();
 
+	void capabilityValueChanged(unsigned long capId);
+
 	bool saveSettings;
 
 signals:
@@ -631,6 +633,7 @@ protected:
 
 	// camera controls
 	DkCamControls* camControls;
+	MaidFacade* maidFacade;
 
 	// client managers
 	//DkLocalClientManager* localClientManager;
