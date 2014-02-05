@@ -66,6 +66,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsItem>
 #include <QListWidget>
+#include <QDialogButtonBox>
 
 // gif animation label -----
 #include <QVBoxLayout>
@@ -1667,6 +1668,33 @@ protected:
 
 // MAID / Camera stuff -------------------------------------------------------------
 
+class OpenDeviceThread : public QThread {
+	Q_OBJECT
+
+public:
+	OpenDeviceThread(MaidFacade *maidFacade, ULONG deviceId);
+	~OpenDeviceThread() {}
+
+signals:
+	void error();
+
+protected:
+    void run();
+
+private:
+	MaidFacade *maidFacade;
+	ULONG deviceId;
+};
+
+class OpenDeviceProgressDialog : public QProgressDialog {
+public:
+	OpenDeviceProgressDialog(QWidget* parent);
+	~OpenDeviceProgressDialog() {}
+
+protected:
+	void closeEvent(QCloseEvent* e);
+};
+
 class ConnectDeviceDialog : public QDialog {
 	Q_OBJECT
 
@@ -1685,8 +1713,7 @@ private:
     QListWidget* devicesListWidget;
     QHBoxLayout* hboxLayout;
     QSpacerItem* spacerItem;
-    QPushButton* okButton;
-    QPushButton* cancelButton;
+	QDialogButtonBox* buttonBox;
 };
 
 class DeviceListWidgetItem : public QListWidgetItem {
@@ -1705,16 +1732,14 @@ class DkCamControls : public QDockWidget {
 	Q_OBJECT
 
 public:
-	enum {
-		connect_device,
-
-		actions_end
-	};
-
 	DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
 	~DkCamControls();
 	
 	void capabilityValueChanged(unsigned long capId);
+
+public slots:
+	void onDeviceOpened();
+	void onOpenDeviceError();
 
 protected slots:
 	void connectDevice();
@@ -1739,8 +1764,8 @@ protected:
 	MaidFacade* maidFacade;
 	bool isConnected;
 	std::unique_ptr<ConnectDeviceDialog> connectDeviceDialog;
-	//std::unique_ptr<OpenDeviceProgressDialog> openDeviceProgressDialog;
-	//std::unique_ptr<OpenDeviceThread> openDeviceThread;
+	std::unique_ptr<OpenDeviceProgressDialog> openDeviceProgressDialog;
+	std::unique_ptr<OpenDeviceThread> openDeviceThread;
 	std::set<uint32_t> deviceIds;
 	std::pair<uint32_t, bool> connectedDeviceId;
 
@@ -1754,8 +1779,6 @@ protected:
 	QComboBox* shutterSpeedCombo;
 	QPushButton* shootButton;
 	QPushButton* shootAfButton;
-
-	QVector<QAction*> actions;
 };
 
 };

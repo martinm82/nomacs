@@ -40,6 +40,10 @@ void MaidFacade::init() {
 	//}
 }
 
+void MaidFacade::setCapValueChangeCallback(std::function<void(ULONG)> capValueChangeCallback) {
+	capValueChangeCallback = capValueChangeCallback;
+}
+
 /*!
  * throws MaidError
  */
@@ -52,11 +56,10 @@ std::set<uint32_t> MaidFacade::listDevices() {
 /*!
  * throws OpenCloseObjectError
  */
-void MaidFacade::openSource(ULONG id, std::function<void(ULONG)> capValueChangeCallback) {
+void MaidFacade::openSource(ULONG id) {
 	//mutex.lock();
 	sourceObject.reset(MaidObject::create(id, moduleObject.get()));
 	sourceObject->setEventCallback(this, eventProc);
-	capValueChangeCallback = capValueChangeCallback;
 	//sourceObject->setProgressCallback(progressProc);
 	//mutex.unlock();
 }

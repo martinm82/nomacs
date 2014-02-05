@@ -52,8 +52,9 @@ public:
 	std::function<void(unsigned long)> capValueChangeCallback;
 
 	void init();
+	void setCapValueChangeCallback(std::function<void(unsigned long)> capValueChangeCallback);
 	std::set<uint32_t> listDevices();
-	void openSource(ULONG id, std::function<void(unsigned long)> capValueChangeCallback);
+	void openSource(ULONG id);
 	bool checkCameraType();
 	void closeModule();
 	void closeSource();

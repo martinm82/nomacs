@@ -25,6 +25,8 @@
 
  *******************************************************************************************************/
 
+#include <QProgressBar>
+
 #include "DkWidgets.h"
 
 #include "DkNoMacs.h"
@@ -4928,15 +4930,17 @@ void DkSlider::createLayout() {
 	connect(sliderBox, SIGNAL(valueChanged(int)), this, SLOT(setValue(int)));
 }
 
-// DkCamControls --------------------------------------------------------------------
+// MAID / Camera Stuff --------------------------------------------------------------------
+
 #ifdef WITH_CAMCONTROLS
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
 	: QDockWidget(title, parent, flags), maidFacade(maidFacade), isConnected(false) {
 
 	setObjectName("DkCamControls");
-	setConnected(false);
 	createLayout();
+	setConnected(false);
 	updateUiValues();
+	maidFacade->setCapValueChangeCallback([&] (ULONG cap) { capabilityValueChanged(cap); });
 	//readSettings();
 }
 
@@ -5011,12 +5015,8 @@ void DkCamControls::createLayout() {
 	
 	setWidget(widget);
 
-	// create actions
-	actions.resize(actions_end);
-
-	actions[connect_device] = new QAction(tr("Connect"), this);
-	connect(actions[connect_device], SIGNAL(triggered()), this, SLOT(connectDevice()));
-	connectButton->addAction(actions[connect_device]);
+	// connections
+	connect(connectButton, SIGNAL(clicked()), this, SLOT(connectDevice()));
 }
 
 void DkCamControls::connectDevice() {
@@ -5026,20 +5026,45 @@ void DkCamControls::connectDevice() {
 		connectDeviceDialog.reset(new ConnectDeviceDialog(maidFacade, this));
 		stateUpdate(); // avoid delay
 		if (connectDeviceDialog->exec() == QDialog::Accepted && connectDeviceDialog->getSelectedId().second) {
-			//try {
-			//	openDeviceProgressDialog.reset(new OpenDeviceProgressDialog(this));
+			try {
+				openDeviceProgressDialog.reset(new OpenDeviceProgressDialog(this));
 
-			//	connectedDeviceId = connectDeviceDialog->getSelectedId();
-			//	openDeviceThread.reset(new OpenDeviceThread(&maidFacade, connectedDeviceId.first));
-			//	connect(openDeviceThread.get(), SIGNAL(finished()), this, SLOT(onDeviceOpened()));
-			//	connect(openDeviceThread.get(), SIGNAL(error()), this, SLOT(onOpenDeviceError()));
-			//	openDeviceThread->start();
-			//	openDeviceProgressDialog->exec();
-			//} catch (Maid::MaidError e) {
-			//	onOpenDeviceError();
-			//}
+				connectedDeviceId = connectDeviceDialog->getSelectedId();
+				openDeviceThread.reset(new OpenDeviceThread(maidFacade, connectedDeviceId.first));
+				connect(openDeviceThread.get(), SIGNAL(finished()), this, SLOT(onDeviceOpened()));
+				connect(openDeviceThread.get(), SIGNAL(error()), this, SLOT(onOpenDeviceError()));
+				openDeviceThread->start();
+				openDeviceProgressDialog->exec();
+			} catch (Maid::MaidError e) {
+				onOpenDeviceError();
+			}
 		}
 	}
+}
+
+void DkCamControls::onDeviceOpened() {
+	if (openDeviceProgressDialog) {
+		openDeviceProgressDialog->cancel();
+	}
+
+	if (!maidFacade->isSourceAlive()) {
+		return;
+	}
+
+	if (!maidFacade->checkCameraType()) {
+		// TODO new GuiReport(GuiReport::ReportType::Warning, tr("This program is not compatible with the selected camera model."), this);
+		qDebug() << tr("This program is not compatible with the selected camera model.");
+		closeDeviceAndSetState();
+		return;
+	}
+
+	setConnected(true);
+	updateUiValues();
+}
+
+void DkCamControls::onOpenDeviceError() {
+	// TODO new GuiReport(GuiReport::ReportType::Warning, tr("The source could not be opened"), this);
+	qDebug() << tr("The source could not be opened");
 }
 
 void DkCamControls::setConnected(bool connected) {
@@ -5286,7 +5311,6 @@ void ConnectDeviceDialog::createLayout() {
 	//setObjectName(QStringLiteral("ConnectDeviceDialog"));
 	setWindowModality(Qt::WindowModal);
 	resize(400, 300);
-	setLocale(QLocale(QLocale::English, QLocale::UnitedStates));
 	verticalLayout = new QVBoxLayout();
 	//verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
 	devicesListWidget = new QListWidget();
@@ -5301,19 +5325,15 @@ void ConnectDeviceDialog::createLayout() {
 	spacerItem = new QSpacerItem(131, 31, QSizePolicy::Expanding, QSizePolicy::Minimum);
 	
 	hboxLayout->addItem(spacerItem);
-	
-	okButton = new QPushButton();
-	//okButton->setObjectName(QStringLiteral("okButton"));
-	okButton->setEnabled(true);
-	
-	hboxLayout->addWidget(okButton);
-	
-	cancelButton = new QPushButton();
-	//cancelButton->setObjectName(QStringLiteral("cancelButton"));
-	
-	hboxLayout->addWidget(cancelButton);
+	buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+	hboxLayout->addWidget(buttonBox);
 
 	verticalLayout->addLayout(hboxLayout);
+
+	setLayout(verticalLayout);
+
+	connect(buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
+	connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
 }
 
 std::pair<uint32_t, bool> ConnectDeviceDialog::getSelectedId() {
@@ -5341,6 +5361,44 @@ void ConnectDeviceDialog::updateDevicesList(std::set<uint32_t> deviceIds) {
 
 			devicesListWidget->item(0)->setSelected(true);
 		}
+	}
+}
+
+OpenDeviceThread::OpenDeviceThread(MaidFacade *maidFacade, ULONG deviceId) 
+	: maidFacade(maidFacade), deviceId(deviceId) {
+}
+
+void OpenDeviceThread::run() {
+	try {
+		maidFacade->openSource(deviceId);
+	} catch (Maid::MaidError) {
+		emit error();
+	}
+}
+
+OpenDeviceProgressDialog::OpenDeviceProgressDialog(QWidget* parent)
+	: QProgressDialog(tr("Opening Device. This can take up to several minutes."), tr("Cancel"), 0, 0, parent) {
+
+	setModal(true);
+	QPushButton* cancelButton = new QPushButton(tr("Cancel"), this);
+	cancelButton->setDisabled(true);
+	setCancelButton(cancelButton);
+	
+	QProgressBar* progressBar = new QProgressBar(this);
+	progressBar->setTextVisible(false);
+	setBar(progressBar);
+	setMinimum(0);
+	setMaximum(0);
+
+	setWindowTitle(tr("Connecting Device"));
+}
+
+void OpenDeviceProgressDialog::closeEvent(QCloseEvent* e) {
+	if (e->spontaneous()) {
+		// prevent the user from closing the window, opening a device can _not_ be canceled
+		e->ignore();
+	} else {
+		QProgressDialog::closeEvent(e);
 	}
 }
 
