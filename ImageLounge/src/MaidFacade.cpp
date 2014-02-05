@@ -28,7 +28,7 @@ void MaidFacade::init() {
 	// create module object
 	moduleObject.reset(MaidObject::create(0, nullptr));
 	moduleObject->enumCaps();
-	qDebug() << "Module Object created";
+	qDebug() << "MAID Module Object created";
 	// set callbacks
 	moduleObject->setEventCallback(this, eventProc);
 	//moduleObject->setProgressCallback(progressProc);
@@ -186,34 +186,6 @@ NKERROR CALLPASCAL CALLBACK dataProc(NKREF ref, LPVOID info, LPVOID data) {
 			r->offset = 0;
 			outFile.close();
 		}
-
-		//	// We have finished the delivery. We will save this file.
-		//	FILE *stream;
-		//	char filename[256], Prefix[16];
-		//	UWORD i = 0;
-		//	if ( pDataInfo->ulType & kNkMAIDDataObjType_Image )
-		//		strcpy(Prefix,"Image");
-		//	else if ( pDataInfo->ulType & kNkMAIDDataObjType_Thumbnail )
-		//		strcpy(Prefix,"Thumb");
-		//	else
-		//		strcpy(Prefix,"Unknown");
-		//	while( true ) {
-		//		sprintf( filename, "%s%03d.raw", Prefix, ++i );
-		//		if ( (stream = fopen(filename, "r") ) != NULL )
-		//			fclose(stream);
-		//		else
-		//			break;
-		//	}
-		//	if ( (stream = fopen(filename, "wb") ) == NULL)
-		//		return kNkMAIDResult_UnexpectedError;
-		//	fwrite(((LPRefDataProc)ref)->pBuffer, 1, ulTotalSize, stream);
-		//	fclose(stream);
-		//	free(((LPRefDataProc)ref)->pBuffer);
-		//	((LPRefDataProc)ref)->pBuffer = NULL;
-		//	((LPRefDataProc)ref)->ulOffset = 0;
-		//	// If the flag of fRemoveObject in NkMAIDFileInfo structure is true, we should remove this item.
-		//	if ( pImageInfo->fRemoveObject && (pDataInfo->ulType & kNkMAIDDataObjType_Image) )
-		//		g_bFileRemoved = true;
 	}
 
 	return kNkMAIDResult_NoError;

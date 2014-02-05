@@ -53,8 +53,6 @@
 #include <QDesktopWidget>
 #include <QProgressDialog>
 
-#define WITH_CAMCONTROLS // TODO this should be set in cmake
-
 // OpenCV
 #ifdef WITH_OPENCV
 

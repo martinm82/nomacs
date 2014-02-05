@@ -1817,118 +1817,6 @@ bool DkSortFileProxyModel::lessThan(const QModelIndex& left, const QModelIndex& 
 	return QSortFilterProxyModel::lessThan(left, right);
 }
 
-// DkCamControls --------------------------------------------------------------------
-#ifdef WITH_CAMCONTROLS
-DkCamControls::DkCamControls(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
-
-	setObjectName("DkCamControls");
-	createLayout();
-	//readSettings();
-}
-
-DkCamControls::~DkCamControls() {
-	//writeSettings();
-}
-
-void DkCamControls::createLayout() {
-	widget = new QWidget();
-	mainLayout = new QVBoxLayout();
-	widget->setLayout(mainLayout);
-
-	QHBoxLayout* connectionLayout = new QHBoxLayout();
-	lensAttachedLabel = new QLabel();
-	updateLensAttachedLabel(false);
-	connectButton = new QPushButton(tr("Connect device..."));
-	connectionLayout->addWidget(connectButton);
-	connectionLayout->addWidget(lensAttachedLabel);
-	connectionLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-	mainLayout->addLayout(connectionLayout);
-
-	FlowLayout* flowLayout = new FlowLayout();
-
-	QWidget* exposureModeWidget = new QWidget();
-	QHBoxLayout* exposureModeLayout = new QHBoxLayout();
-	QLabel* exposureModeLabel = new QLabel(tr("Exposure Mode"));
-	exposureModeCombo = new QComboBox();
-	exposureModeLayout->addWidget(exposureModeLabel);
-	exposureModeLayout->addWidget(exposureModeCombo);
-	exposureModeWidget->setLayout(exposureModeLayout);
-
-	QWidget* apertureWidget = new QWidget();
-	QHBoxLayout* apertureLayout = new QHBoxLayout();
-	QLabel* apertureLabel = new QLabel(tr("Aperture"));
-	apertureCombo = new QComboBox();
-	apertureLayout->addWidget(apertureLabel);
-	apertureLayout->addWidget(apertureCombo);
-	apertureWidget->setLayout(apertureLayout);
-
-	QWidget* isoWidget = new QWidget();
-	QHBoxLayout* isoLayout = new QHBoxLayout();
-	QLabel* isoLabel = new QLabel(tr("Sensitivity (ISO)"));
-	isoCombo = new QComboBox();
-	isoLayout->addWidget(isoLabel);
-	isoLayout->addWidget(isoCombo);
-	isoWidget->setLayout(isoLayout);
-
-	QWidget* shutterSpeedWidget = new QWidget();
-	QHBoxLayout* shutterSpeedLayout = new QHBoxLayout();
-	QLabel* shutterSpeedLabel = new QLabel(tr("Shutter Speed"));
-	shutterSpeedCombo = new QComboBox();
-	shutterSpeedLayout->addWidget(shutterSpeedLabel);
-	shutterSpeedLayout->addWidget(shutterSpeedCombo);
-	shutterSpeedWidget->setLayout(shutterSpeedLayout);
-
-	flowLayout->addWidget(exposureModeWidget);
-	flowLayout->addWidget(apertureWidget);
-	flowLayout->addWidget(isoWidget);
-	flowLayout->addWidget(shutterSpeedWidget);
-	mainLayout->addLayout(flowLayout);
-
-	QHBoxLayout* buttonsLayout = new QHBoxLayout();
-	shootButton = new QPushButton(tr("Shoot"));
-	shootAfButton = new QPushButton(tr("Shoot with AF"));
-	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-	buttonsLayout->addWidget(shootButton);
-	buttonsLayout->addWidget(shootAfButton);
-	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-	mainLayout->addLayout(buttonsLayout);
-
-	mainLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-	
-	setWidget(widget);
-}
-
-void DkCamControls::closeEvent(QCloseEvent* event) {
-	//writeSettings();
-}
-
-void DkCamControls::updateLensAttachedLabel(bool attached) {
-	if (attached) {
-		lensAttachedLabel->setText(tr(""));
-	} else {
-		lensAttachedLabel->setText(tr("No lens attached"));
-	}
-}
-
-
-#else
-DkCamControls::DkCamControls(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
-	setObjectName("DkCamControls");
-}
-
-DkCamControls::~DkCamControls() {
-}
-
-void DkCamControls::createLayout() {
-}
-
-void DkCamControls::closeEvent(QCloseEvent* event) {
-}
-
-void DkCamControls::updateConnectionStatusLabel(bool connected) {
-}
-#endif
-
 // DkExplorer --------------------------------------------------------------------
 DkExplorer::DkExplorer(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
 
@@ -5038,6 +4926,199 @@ void DkSlider::createLayout() {
 	connect(slider, SIGNAL(valueChanged(int)), this, SLOT(setValue(int)));
 	connect(sliderBox, SIGNAL(valueChanged(int)), this, SLOT(setValue(int)));
 }
+
+// DkCamControls --------------------------------------------------------------------
+#ifdef WITH_CAMCONTROLS
+DkCamControls::DkCamControls(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
+
+	setObjectName("DkCamControls");
+	createLayout();
+	//readSettings();
+}
+
+DkCamControls::~DkCamControls() {
+	//writeSettings();
+}
+
+void DkCamControls::createLayout() {
+	widget = new QWidget();
+	mainLayout = new QVBoxLayout();
+	widget->setLayout(mainLayout);
+
+	QHBoxLayout* connectionLayout = new QHBoxLayout();
+	lensAttachedLabel = new QLabel();
+	updateLensAttachedLabel(false);
+	connectButton = new QPushButton(tr("Connect device..."));
+	connectionLayout->addWidget(connectButton);
+	connectionLayout->addWidget(lensAttachedLabel);
+	connectionLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	mainLayout->addLayout(connectionLayout);
+
+	FlowLayout* flowLayout = new FlowLayout();
+
+	QWidget* exposureModeWidget = new QWidget();
+	QHBoxLayout* exposureModeLayout = new QHBoxLayout();
+	QLabel* exposureModeLabel = new QLabel(tr("Exposure Mode"));
+	exposureModeCombo = new QComboBox();
+	exposureModeLayout->addWidget(exposureModeLabel);
+	exposureModeLayout->addWidget(exposureModeCombo);
+	exposureModeWidget->setLayout(exposureModeLayout);
+
+	QWidget* apertureWidget = new QWidget();
+	QHBoxLayout* apertureLayout = new QHBoxLayout();
+	QLabel* apertureLabel = new QLabel(tr("Aperture"));
+	apertureCombo = new QComboBox();
+	apertureLayout->addWidget(apertureLabel);
+	apertureLayout->addWidget(apertureCombo);
+	apertureWidget->setLayout(apertureLayout);
+
+	QWidget* isoWidget = new QWidget();
+	QHBoxLayout* isoLayout = new QHBoxLayout();
+	QLabel* isoLabel = new QLabel(tr("Sensitivity (ISO)"));
+	isoCombo = new QComboBox();
+	isoLayout->addWidget(isoLabel);
+	isoLayout->addWidget(isoCombo);
+	isoWidget->setLayout(isoLayout);
+
+	QWidget* shutterSpeedWidget = new QWidget();
+	QHBoxLayout* shutterSpeedLayout = new QHBoxLayout();
+	QLabel* shutterSpeedLabel = new QLabel(tr("Shutter Speed"));
+	shutterSpeedCombo = new QComboBox();
+	shutterSpeedLayout->addWidget(shutterSpeedLabel);
+	shutterSpeedLayout->addWidget(shutterSpeedCombo);
+	shutterSpeedWidget->setLayout(shutterSpeedLayout);
+
+	flowLayout->addWidget(exposureModeWidget);
+	flowLayout->addWidget(apertureWidget);
+	flowLayout->addWidget(isoWidget);
+	flowLayout->addWidget(shutterSpeedWidget);
+	mainLayout->addLayout(flowLayout);
+
+	QHBoxLayout* buttonsLayout = new QHBoxLayout();
+	shootButton = new QPushButton(tr("Shoot"));
+	shootAfButton = new QPushButton(tr("Shoot with AF"));
+	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	buttonsLayout->addWidget(shootButton);
+	buttonsLayout->addWidget(shootAfButton);
+	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	mainLayout->addLayout(buttonsLayout);
+
+	mainLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	
+	setWidget(widget);
+}
+
+void DkCamControls::closeEvent(QCloseEvent* event) {
+	//writeSettings();
+}
+
+void DkCamControls::updateLensAttachedLabel(bool attached) {
+	if (attached) {
+		lensAttachedLabel->setText(tr(""));
+	} else {
+		lensAttachedLabel->setText(tr("No lens attached"));
+	}
+}
+
+ConnectDeviceDialog::ConnectDeviceDialog(MaidFacade* maidFacade, QWidget* parent)
+	: QDialog(parent), maidFacade(maidFacade) {
+
+	createLayout();
+}
+
+void ConnectDeviceDialog::createLayout() {
+	//setObjectName(QStringLiteral("ConnectDeviceDialog"));
+	setWindowModality(Qt::WindowModal);
+	resize(400, 300);
+	setLocale(QLocale(QLocale::English, QLocale::UnitedStates));
+	verticalLayout = new QVBoxLayout();
+	//verticalLayout->setObjectName(QStringLiteral("verticalLayout"));
+	devicesListWidget = new QListWidget();
+	//devicesListWidget->setObjectName(QStringLiteral("devicesListWidget"));
+	
+	verticalLayout->addWidget(devicesListWidget);
+	
+	hboxLayout = new QHBoxLayout();
+	hboxLayout->setSpacing(6);
+	//hboxLayout->setObjectName(QStringLiteral("hboxLayout"));
+	hboxLayout->setContentsMargins(0, 0, 0, 0);
+	spacerItem = new QSpacerItem(131, 31, QSizePolicy::Expanding, QSizePolicy::Minimum);
+	
+	hboxLayout->addItem(spacerItem);
+	
+	okButton = new QPushButton();
+	//okButton->setObjectName(QStringLiteral("okButton"));
+	okButton->setEnabled(true);
+	
+	hboxLayout->addWidget(okButton);
+	
+	cancelButton = new QPushButton();
+	//cancelButton->setObjectName(QStringLiteral("cancelButton"));
+	
+	hboxLayout->addWidget(cancelButton);
+
+	verticalLayout->addLayout(hboxLayout);
+}
+
+std::pair<ULONG, bool> ConnectDeviceDialog::getSelectedId() {
+	auto selectedItems = devicesListWidget->selectedItems();
+	std::pair<ULONG, bool> v;
+	if (selectedItems.isEmpty()) {
+		v.first = -1;
+		v.second = false;
+	} else {
+		v.first = static_cast<DeviceListWidgetItem*>(selectedItems.first())->getId();
+		v.second = true;
+	}
+
+	return v;
+}
+
+void ConnectDeviceDialog::updateDevicesList(std::set<ULONG> deviceIds) {
+	if (deviceIds.size() != devicesListWidget->count()) {
+		devicesListWidget->clear();
+
+		if (deviceIds.size() > 0) {
+			for (ULONG deviceId : deviceIds) {
+				devicesListWidget->addItem(new DeviceListWidgetItem(QString("Device #%1").arg(deviceId), deviceId));
+			}
+
+			devicesListWidget->item(0)->setSelected(true);
+		}
+	}
+}
+
+#else
+DkCamControls::DkCamControls(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
+	setObjectName("DkCamControls");
+}
+
+DkCamControls::~DkCamControls() {
+}
+
+void DkCamControls::createLayout() {
+}
+
+void DkCamControls::closeEvent(QCloseEvent* event) {
+}
+
+void DkCamControls::updateLensAttachedLabel(bool attached) {
+}
+
+ConnectDeviceDialog::ConnectDeviceDialog(MaidFacade* maidFacade, QWidget* parent)
+	: QDialog(parent), maidFacade(maidFacade) {
+}
+
+void ConnectDeviceDialog::createLayout() {
+}
+
+std::pair<ULONG, bool> ConnectDeviceDialog::getSelectedId() {
+}
+
+void ConnectDeviceDialog::updateDevicesList(std::set<ULONG> deviceIds) {
+}
+#endif
+
 
 }
 

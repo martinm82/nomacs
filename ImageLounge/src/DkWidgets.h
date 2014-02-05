@@ -65,6 +65,7 @@
 #include <QGraphicsPixmapItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsItem>
+#include <QListWidget>
 
 // gif animation label -----
 #include <QVBoxLayout>
@@ -77,6 +78,7 @@
 #include "DkSettings.h"
 #include "DkMath.h"
 #include "DkToolbars.h"
+#include "MaidFacade.h"
 
 #ifdef Q_WS_WIN
 #include <ShObjIdl.h>
@@ -1663,6 +1665,8 @@ protected:
 	QSpinBox* sliderBox;
 };
 
+// MAID / Camera stuff -------------------------------------------------------------
+
 class DkCamControls : public QDockWidget {
 	Q_OBJECT
 
@@ -1685,6 +1689,40 @@ protected:
 	QComboBox* shutterSpeedCombo;
 	QPushButton* shootButton;
 	QPushButton* shootAfButton;
+};
+
+class ConnectDeviceDialog : public QDialog {
+	Q_OBJECT
+
+public:
+	ConnectDeviceDialog(MaidFacade* maidFacade, QWidget *parent = 0);
+	virtual ~ConnectDeviceDialog() {}
+
+	std::pair<ULONG, bool> getSelectedId();
+	void updateDevicesList(std::set<ULONG> deviceIds);
+
+private:
+	void createLayout();
+
+	MaidFacade* maidFacade;
+	QVBoxLayout* verticalLayout;
+    QListWidget* devicesListWidget;
+    QHBoxLayout* hboxLayout;
+    QSpacerItem* spacerItem;
+    QPushButton* okButton;
+    QPushButton* cancelButton;
+};
+
+class DeviceListWidgetItem : public QListWidgetItem {
+public:
+	DeviceListWidgetItem(const QString& text, unsigned long id) 
+		: QListWidgetItem(text), id(id) {}
+
+	unsigned long getId() {
+		return id;
+	}
+private:
+	unsigned long id;
 };
 
 };
