@@ -41,6 +41,316 @@ void MaidFacade::init() {
 	//}
 }
 
+/*!
+ * throws MaidError
+ */
+std::set<ULONG> MaidFacade::listDevices() {
+	auto& devicesV = moduleObject->getChildren();
+	std::set<ULONG> devices(devicesV.begin(), devicesV.end());
+	return devices;
+}
+
+/*!
+ * throws OpenCloseObjectError
+ */
+void MaidFacade::openSource(ULONG id) {
+	//mutex.lock();
+	sourceObject.reset(MaidObject::create(id, moduleObject.get()));
+	sourceObject->setEventCallback(this, eventProc);
+	//sourceObject->setProgressCallback(progressProc);
+	//mutex.unlock();
+}
+
+bool MaidFacade::checkCameraType() {
+	// the only currently supported source is a Nikon D4
+	// read the camera type
+	ULONG cameraType = 0;
+	sourceObject->capGet(kNkMAIDCapability_CameraType, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &cameraType);
+	return cameraType == kNkMAIDCameraType_D4;
+}
+
+/*!
+ * Reads a packed string value from the source and returns it
+ * throws MaidError
+ */
+MaidFacade::MaybeStringValues MaidFacade::readPackedStringCap(ULONG capId) {
+	MaybeStringValues mv;
+	StringValues& v = mv.first;
+	mv.second = false;
+	
+	if (!sourceObject) {
+		return mv;
+	}
+	
+	std::pair<NkMAIDEnum, bool> mEnum = MaidUtil::getInstance().fillEnum<char>(sourceObject.get(), capId);
+	if (!mEnum.second) {
+		return mv;
+	}
+
+	NkMAIDEnum* en = &mEnum.first;
+	v.values = MaidUtil::getInstance().packedStringEnumToVector(en);
+	v.currentValue = en->ulValue;
+	delete[] en->pData;
+
+	mv.second = true;
+	return mv;
+}
+
+MaidFacade::MaybeUnsignedValues MaidFacade::readUnsignedEnumCap(ULONG capId) {
+	MaybeUnsignedValues mv;
+	UnsignedValues& v = mv.first;
+	mv.second = false;
+
+	if (!sourceObject) {
+		return mv;
+	}
+
+	std::pair<NkMAIDEnum, bool> mEnum = MaidUtil::getInstance().fillEnum<ULONG>(sourceObject.get(), capId);
+	if (!mEnum.second) {
+		return mv;
+	}
+	
+	NkMAIDEnum* en = &mEnum.first;
+	v.values = MaidUtil::getInstance().unsignedEnumToVector(en);
+	v.currentValue = en->ulValue;
+	delete[] en->pData;
+
+	mv.second = true;
+	return mv;
+}
+
+/*!
+ * Reads the aperture value from the source and returns it
+ * throws MaidError
+ */
+MaidFacade::MaybeStringValues MaidFacade::readAperture() {
+	MaybeStringValues v = readPackedStringCap(kNkMAIDCapability_Aperture);
+	// maid module returns "--" if there is no lens attached and F0Manual is not set
+	if (!v.second || v.first.values.size() == 0 || v.first.values.at(0) == "--") {
+		v.second = false;
+		return v;
+	}
+
+	aperture = v;
+
+	return aperture;
+}
+
+/*!
+ * Reads the sensitivity value from the source and returns it
+ * throws MaidError
+ */
+MaidFacade::MaybeStringValues MaidFacade::readSensitivity() {
+	sensitivity = readPackedStringCap(kNkMAIDCapability_Sensitivity);
+	return sensitivity;
+}
+
+/*!
+ * Reads the shutter speed value from the source and returns it
+ * throws MaidError
+ */
+MaidFacade::MaybeStringValues MaidFacade::readShutterSpeed() {
+	shutterSpeed = readPackedStringCap(kNkMAIDCapability_ShutterSpeed);
+	return shutterSpeed;
+}
+
+/*!
+ * Reads the exposure mode from the source and returns it
+ * throws MaidError
+ */
+MaidFacade::MaybeUnsignedValues MaidFacade::readExposureMode() {
+	exposureMode = readUnsignedEnumCap(kNkMAIDCapability_ExposureMode);
+	if (!exposureMode.second) {
+		return exposureMode;
+	}
+
+	// lens attached: 4 values
+	// not attached: 2 values
+	lensAttached = exposureMode.first.values.size() == 4;
+
+	return exposureMode;
+}
+
+MaidFacade::MaybeStringValues MaidFacade::getAperture() {
+	return aperture;
+}
+
+MaidFacade::MaybeStringValues MaidFacade::getSensitivity() {
+	return sensitivity;
+}
+
+MaidFacade::MaybeStringValues MaidFacade::getShutterSpeed() {
+	return shutterSpeed;
+}
+
+MaidFacade::MaybeUnsignedValues MaidFacade::getExposureMode() {
+	return exposureMode;
+}
+
+bool MaidFacade::writeEnumCap(ULONG capId, uint32_t newValue) {
+	try {
+		if (!sourceObject->hasCapOperation(capId, kNkMAIDCapOperation_Set)) {
+			return false;
+		}
+
+		std::pair<NkMAIDEnum, bool> mEnum = MaidUtil::getInstance().fillEnum<char>(sourceObject.get(), capId);
+		if (!mEnum.second) {
+			return false;
+		}
+
+		mEnum.first.ulValue = newValue;
+		sourceObject->capSet(capId, kNkMAIDDataType_EnumPtr, (NKPARAM) &mEnum.first);
+		return true;
+	} catch (Maid::MaidError) {
+		return false; // we don't care about what specifically went wrong
+	}
+}
+
+bool MaidFacade::setMaybeStringEnumValue(std::pair<StringValues, bool>& theMaybeValue, ULONG capId, size_t newValue) {
+	if (theMaybeValue.second) {
+		bool r = writeEnumCap(capId, newValue);
+		if (r) {
+			theMaybeValue.first.currentValue = newValue;
+		}
+		return r;
+	} else {
+		return false;
+	}
+}
+
+bool MaidFacade::setMaybeUnsignedEnumValue(std::pair<UnsignedValues, bool>& theMaybeValue, ULONG capId, size_t newValue) {
+	if (theMaybeValue.second) {
+		bool r = writeEnumCap(capId, newValue);
+		if (r) {
+			theMaybeValue.first.currentValue = newValue;
+		}
+		return r;
+	} else {
+		return false;
+	}
+}
+
+bool MaidFacade::setAperture(size_t newValue) {
+	return setMaybeStringEnumValue(aperture, kNkMAIDCapability_Aperture, newValue);
+}
+
+bool MaidFacade::setSensitivity(size_t newValue) {
+	return setMaybeStringEnumValue(sensitivity, kNkMAIDCapability_Sensitivity, newValue);
+}
+
+bool MaidFacade::setShutterSpeed(size_t newValue) {
+	return setMaybeStringEnumValue(shutterSpeed, kNkMAIDCapability_ShutterSpeed, newValue);
+}
+
+bool MaidFacade::setExposureMode(size_t newValue) {
+	return setMaybeUnsignedEnumValue(exposureMode, kNkMAIDCapability_ExposureMode, newValue);
+}
+
+bool MaidFacade::isLensAttached() {
+	return lensAttached;
+}
+
+void MaidFacade::closeModule() {
+	if (moduleObject) {
+		moduleObject->closeObject();
+	}
+	moduleObject.reset();
+}
+	
+void MaidFacade::closeSource() {
+	if (sourceObject) {
+		sourceObject->closeObject();
+	}
+	sourceObject.reset();
+}
+
+void MaidFacade::closeEverything() {
+	closeSource();
+	closeModule();
+}
+
+bool MaidFacade::isSourceAlive() {
+	if (sourceObject) {
+		return sourceObject->isAlive();
+	}
+	return false;
+}
+
+void MaidFacade::sourceIdleLoop(ULONG* count) {
+	// wait until the operation is completed (when completionProc is called)
+	do {
+		sourceObject->async();
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	} while (*count <= 0);
+	sourceObject->async();
+}
+
+bool MaidFacade::shoot() {
+	bool ret;
+	ULONG captureCount = 0;
+	ULONG acquireCount = 0;
+	
+	NkMAIDCapInfo capInfo;
+	sourceObject->getCapInfo(kNkMAIDCapability_Capture, &capInfo);
+
+	CompletionProcData* complData = new CompletionProcData();
+	complData->count = &captureCount;
+
+	int opRet = sourceObject->capStart(kNkMAIDCapability_Capture, completionProc, (NKREF) complData);
+	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
+		qDebug() << "Error executing capture capability";
+		return false;
+	}
+
+	sourceIdleLoop(&captureCount);
+
+	std::vector<ULONG> itemIds;
+	itemIds = sourceObject->getChildren();
+	if (itemIds.size() <= 0) {
+		qDebug() << "No item objects";
+		return false;
+	}
+
+	// open the item object
+	std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get()));
+	if (!itemObject) {
+		qDebug() << "Item object #0 could not be opened!";
+		return false;
+	}
+
+	itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
+	ULONG dataTypes;
+	itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
+
+	if (dataTypes & kNkMAIDDataObjType_Image) {
+		std::unique_ptr<MaidObject> dataObject(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
+		if (!dataObject) {
+			qDebug() << "Data object could not be opened!";
+			return false;
+		}
+
+		DataProcData* ref = new DataProcData();
+		ref->id = dataObject->getID();
+
+		complData = new CompletionProcData();
+		complData->count = &acquireCount;
+		complData->data = ref;
+
+		//dataObject->capSet(kNkMAIDCapability_DataProc, kNkMAIDDataType_CallbackPtr, (NKPARAM) &stProc);
+		dataObject->setDataCallback((NKREF) ref, dataProc);
+		opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
+		if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
+			qDebug() << "Error acquiring data";
+			return false;
+		}
+
+		sourceIdleLoop(&acquireCount);
+
+		dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
+	}
+
+	return true;
+}
 
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 	MaidFacade* maidFacade = (MaidFacade*) ref;

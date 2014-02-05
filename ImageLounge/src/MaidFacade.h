@@ -52,27 +52,27 @@ public:
 	std::function<void(unsigned long)> capValueChangeCallback;
 
 	void init();
-	//std::set<ULONG> listDevices();
-	//void openSource(ULONG id);
-	//bool checkCameraType();
-	//void closeModule();
-	//void closeSource();
-	//void closeEverything();
-	//bool isSourceAlive();
-	//MaybeStringValues readAperture();
-	//MaybeStringValues readSensitivity();
-	//MaybeStringValues readShutterSpeed();
-	//MaybeUnsignedValues readExposureMode();
-	//MaybeStringValues getAperture();
-	//MaybeStringValues getSensitivity();
-	//MaybeStringValues getShutterSpeed();
-	//MaybeUnsignedValues getExposureMode();
-	//bool setAperture(size_t newValue);
-	//bool setSensitivity(size_t newValue);
-	//bool setShutterSpeed(size_t newValue);
-	//bool setExposureMode(size_t newValue);
-	//bool isLensAttached();
-	//bool shoot();
+	std::set<ULONG> listDevices();
+	void openSource(ULONG id);
+	bool checkCameraType();
+	void closeModule();
+	void closeSource();
+	void closeEverything();
+	bool isSourceAlive();
+	MaybeStringValues readAperture();
+	MaybeStringValues readSensitivity();
+	MaybeStringValues readShutterSpeed();
+	MaybeUnsignedValues readExposureMode();
+	MaybeStringValues getAperture();
+	MaybeStringValues getSensitivity();
+	MaybeStringValues getShutterSpeed();
+	MaybeUnsignedValues getExposureMode();
+	bool setAperture(size_t newValue);
+	bool setSensitivity(size_t newValue);
+	bool setShutterSpeed(size_t newValue);
+	bool setExposureMode(size_t newValue);
+	bool isLensAttached();
+	bool shoot();
 
 private:
 	std::unique_ptr<Maid::MaidObject> moduleObject;
