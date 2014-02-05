@@ -1,5 +1,4 @@
-#ifndef _MAIDUTIL_H
-#define _MAIDUTIL_H
+#pragma once
 
 #include <vector>
 #include <cstdint>
@@ -68,5 +67,3 @@ private:
 };
 
 }
-
-#endif

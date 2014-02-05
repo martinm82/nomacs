@@ -1,5 +1,4 @@
-#ifndef _MAIDOBJECT_H
-#define _MAIDOBJECT_H
+#pragma once
 
 #include <vector>
 #include <set>
