@@ -40,8 +40,8 @@ void MaidFacade::init() {
 	//}
 }
 
-void MaidFacade::setCapValueChangeCallback(std::function<void(ULONG)> capValueChangeCallback) {
-	capValueChangeCallback = capValueChangeCallback;
+void MaidFacade::setCapValueChangeCallback(std::function<void(uint32_t)> capValueChangeCallback) {
+	this->capValueChangeCallback = capValueChangeCallback;
 }
 
 /*!

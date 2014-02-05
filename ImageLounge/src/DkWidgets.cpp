@@ -4942,7 +4942,7 @@ DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidg
 	createLayout();
 	setConnected(false);
 	updateUiValues();
-	maidFacade->setCapValueChangeCallback([&] (ULONG cap) { capabilityValueChanged(cap); });
+	maidFacade->setCapValueChangeCallback([&] (uint32_t cap) { capabilityValueChanged(cap); });
 
 	stateUpdateTimer.reset(new QTimer(this));
 	connect(stateUpdateTimer.get(), SIGNAL(timeout()), this, SLOT(stateUpdate())); 
@@ -5053,19 +5053,23 @@ void DkCamControls::onDeviceOpened() {
 		openDeviceProgressDialog->cancel();
 	}
 
-	if (!maidFacade->isSourceAlive()) {
-		return;
-	}
+	try {
+		if (!maidFacade->isSourceAlive()) {
+			return;
+		}
 
-	if (!maidFacade->checkCameraType()) {
-		// TODO new GuiReport(GuiReport::ReportType::Warning, tr("This program is not compatible with the selected camera model."), this);
-		qDebug() << tr("This program is not compatible with the selected camera model.");
-		closeDeviceAndSetState();
-		return;
-	}
+		if (!maidFacade->checkCameraType()) {
+			// TODO new GuiReport(GuiReport::ReportType::Warning, tr("This program is not compatible with the selected camera model."), this);
+			qDebug() << tr("This program is not compatible with the selected camera model.");
+			closeDeviceAndSetState();
+			return;
+		}
 
-	setConnected(true);
-	updateUiValues();
+		setConnected(true);
+		updateUiValues();
+	} catch (Maid::MaidError e) {
+		qDebug() << tr("[ERROR] after opening device");
+	}
 }
 
 void DkCamControls::onOpenDeviceError() {
@@ -5127,7 +5131,7 @@ void DkCamControls::stopActivities() {
 }
 
 void DkCamControls::showEvent(QShowEvent *event) {
-	//stateUpdateTimer->start(stateRefreshRate);
+	stateUpdateTimer->start(stateRefreshRate);
 }
 
 void DkCamControls::closeEvent(QCloseEvent* event) {
