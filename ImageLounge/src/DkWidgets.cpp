@@ -30,6 +30,7 @@
 #include "DkNoMacs.h"
 
 #include "FlowLayout.h"
+#include "MaidError.h"
 
 namespace nmc {
 
@@ -4930,12 +4931,13 @@ void DkSlider::createLayout() {
 // DkCamControls --------------------------------------------------------------------
 #ifdef WITH_CAMCONTROLS
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
-	: QDockWidget(title, parent, flags), maidFacade(maidFacade) {
+	: QDockWidget(title, parent, flags), maidFacade(maidFacade), isConnected(false) {
 
 	setObjectName("DkCamControls");
+	setConnected(false);
 	createLayout();
+	updateUiValues();
 	//readSettings();
-	//[&] (unsigned long cap) { capabilityValueChanged(cap); }
 }
 
 DkCamControls::~DkCamControls() {
@@ -5008,6 +5010,85 @@ void DkCamControls::createLayout() {
 	mainLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
 	
 	setWidget(widget);
+
+	// create actions
+	actions.resize(actions_end);
+
+	actions[connect_device] = new QAction(tr("Connect"), this);
+	connect(actions[connect_device], SIGNAL(triggered()), this, SLOT(connectDevice()));
+	connectButton->addAction(actions[connect_device]);
+}
+
+void DkCamControls::connectDevice() {
+	if (isConnected) {
+		closeDeviceAndSetState();
+	} else {
+		connectDeviceDialog.reset(new ConnectDeviceDialog(maidFacade, this));
+		stateUpdate(); // avoid delay
+		if (connectDeviceDialog->exec() == QDialog::Accepted && connectDeviceDialog->getSelectedId().second) {
+			//try {
+			//	openDeviceProgressDialog.reset(new OpenDeviceProgressDialog(this));
+
+			//	connectedDeviceId = connectDeviceDialog->getSelectedId();
+			//	openDeviceThread.reset(new OpenDeviceThread(&maidFacade, connectedDeviceId.first));
+			//	connect(openDeviceThread.get(), SIGNAL(finished()), this, SLOT(onDeviceOpened()));
+			//	connect(openDeviceThread.get(), SIGNAL(error()), this, SLOT(onOpenDeviceError()));
+			//	openDeviceThread->start();
+			//	openDeviceProgressDialog->exec();
+			//} catch (Maid::MaidError e) {
+			//	onOpenDeviceError();
+			//}
+		}
+	}
+}
+
+void DkCamControls::setConnected(bool connected) {
+	if (connected) {
+		isConnected = true;
+		//connectionStatusLabel->setText(tr("Connected to device #%1").arg(connectedDeviceId.first));
+		connectButton->setText(tr("Disconnect"));
+	} else {
+		isConnected = false;
+		//connectionStatusLabel->setText(tr("Not Connected"));
+		connectButton->setText(tr("Connect..."));
+	}
+}
+
+void DkCamControls::stateUpdate() {
+	auto prevDeviceIds = deviceIds;
+	deviceIds = maidFacade->listDevices();
+
+	if (isConnected && connectedDeviceId.second) {
+		if (deviceIds.find(connectedDeviceId.first) != deviceIds.end() && !maidFacade->isSourceAlive()) {
+			closeDeviceAndSetState();
+		}
+	}
+
+	if (deviceIds.size() != prevDeviceIds.size() || 
+		!std::equal(deviceIds.begin(), deviceIds.end(), prevDeviceIds.begin())) {
+
+		if (isConnected && connectedDeviceId.second) {
+			if (deviceIds.find(connectedDeviceId.first) == deviceIds.end()) {
+				closeDeviceAndSetState();
+			}
+		}	
+	}
+
+	// update gui list
+	if (connectDeviceDialog) {
+		connectDeviceDialog->updateDevicesList(deviceIds);
+	}
+}
+
+void DkCamControls::closeDeviceAndSetState() {
+	try {
+		maidFacade->closeSource();
+	} catch (Maid::MaidError) {
+		// there is probably nothing left to close
+	}
+	connectedDeviceId.second = false;
+	setConnected(false);
+	updateUiValues();
 }
 
 void DkCamControls::closeEvent(QCloseEvent* event) {
@@ -5026,7 +5107,7 @@ void DkCamControls::updateLensAttachedLabel(bool attached) {
 void DkCamControls::capabilityValueChanged(unsigned long capId) {
 }
 
-void DkCamControls::updateCameraUiValues() {
+void DkCamControls::updateUiValues() {
 	// exposure mode first
 	updateExposureMode();
 	updateExposureModeDependentUiValues();
@@ -5235,9 +5316,9 @@ void ConnectDeviceDialog::createLayout() {
 	verticalLayout->addLayout(hboxLayout);
 }
 
-std::pair<ULONG, bool> ConnectDeviceDialog::getSelectedId() {
+std::pair<uint32_t, bool> ConnectDeviceDialog::getSelectedId() {
 	auto selectedItems = devicesListWidget->selectedItems();
-	std::pair<ULONG, bool> v;
+	std::pair<uint32_t, bool> v;
 	if (selectedItems.isEmpty()) {
 		v.first = -1;
 		v.second = false;
@@ -5249,12 +5330,12 @@ std::pair<ULONG, bool> ConnectDeviceDialog::getSelectedId() {
 	return v;
 }
 
-void ConnectDeviceDialog::updateDevicesList(std::set<ULONG> deviceIds) {
+void ConnectDeviceDialog::updateDevicesList(std::set<uint32_t> deviceIds) {
 	if (deviceIds.size() != devicesListWidget->count()) {
 		devicesListWidget->clear();
 
 		if (deviceIds.size() > 0) {
-			for (ULONG deviceId : deviceIds) {
+			for (uint32_t deviceId : deviceIds) {
 				devicesListWidget->addItem(new DeviceListWidgetItem(QString("Device #%1").arg(deviceId), deviceId));
 			}
 

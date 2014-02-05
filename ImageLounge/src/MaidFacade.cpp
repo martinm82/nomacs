@@ -43,9 +43,9 @@ void MaidFacade::init() {
 /*!
  * throws MaidError
  */
-std::set<ULONG> MaidFacade::listDevices() {
+std::set<uint32_t> MaidFacade::listDevices() {
 	auto& devicesV = moduleObject->getChildren();
-	std::set<ULONG> devices(devicesV.begin(), devicesV.end());
+	std::set<uint32_t> devices(devicesV.begin(), devicesV.end());
 	return devices;
 }
 

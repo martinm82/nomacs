@@ -1667,43 +1667,6 @@ protected:
 
 // MAID / Camera stuff -------------------------------------------------------------
 
-class DkCamControls : public QDockWidget {
-	Q_OBJECT
-
-public:
-	DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
-	~DkCamControls();
-	
-	void capabilityValueChanged(unsigned long capId);
-
-protected:
-	void closeEvent(QCloseEvent *event);
-	void createLayout();
-	void updateLensAttachedLabel(bool attached);
-	void updateCameraUiValues();
-	void updateExposureModeDependentUiValues();
-	void updateAperture();
-	void updateApertureLabel(const std::string& value = std::string());
-	void updateSensitivity();
-	void updateSensitivityLabel(const std::string& value = std::string());
-	void updateShutterSpeed();
-	void updateShutterSpeedLabel(const std::string& value = std::string());
-	void updateExposureMode();
-
-	MaidFacade* maidFacade;
-
-	QWidget* widget;
-	QVBoxLayout* mainLayout;
-	QPushButton* connectButton;
-	QLabel* lensAttachedLabel;
-	QComboBox* exposureModeCombo;
-	QComboBox* isoCombo;
-	QComboBox* apertureCombo;
-	QComboBox* shutterSpeedCombo;
-	QPushButton* shootButton;
-	QPushButton* shootAfButton;
-};
-
 class ConnectDeviceDialog : public QDialog {
 	Q_OBJECT
 
@@ -1711,8 +1674,8 @@ public:
 	ConnectDeviceDialog(MaidFacade* maidFacade, QWidget *parent = 0);
 	virtual ~ConnectDeviceDialog() {}
 
-	std::pair<ULONG, bool> getSelectedId();
-	void updateDevicesList(std::set<ULONG> deviceIds);
+	std::pair<uint32_t, bool> getSelectedId();
+	void updateDevicesList(std::set<uint32_t> deviceIds);
 
 private:
 	void createLayout();
@@ -1736,6 +1699,63 @@ public:
 	}
 private:
 	unsigned long id;
+};
+
+class DkCamControls : public QDockWidget {
+	Q_OBJECT
+
+public:
+	enum {
+		connect_device,
+
+		actions_end
+	};
+
+	DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
+	~DkCamControls();
+	
+	void capabilityValueChanged(unsigned long capId);
+
+protected slots:
+	void connectDevice();
+
+protected:
+	void closeEvent(QCloseEvent *event);
+	void createLayout();
+	void updateLensAttachedLabel(bool attached);
+	void updateUiValues();
+	void updateExposureModeDependentUiValues();
+	void updateAperture();
+	void updateApertureLabel(const std::string& value = std::string());
+	void updateSensitivity();
+	void updateSensitivityLabel(const std::string& value = std::string());
+	void updateShutterSpeed();
+	void updateShutterSpeedLabel(const std::string& value = std::string());
+	void updateExposureMode();
+	void setConnected(bool connected);
+	void closeDeviceAndSetState();
+	void stateUpdate();
+
+	MaidFacade* maidFacade;
+	bool isConnected;
+	std::unique_ptr<ConnectDeviceDialog> connectDeviceDialog;
+	//std::unique_ptr<OpenDeviceProgressDialog> openDeviceProgressDialog;
+	//std::unique_ptr<OpenDeviceThread> openDeviceThread;
+	std::set<uint32_t> deviceIds;
+	std::pair<uint32_t, bool> connectedDeviceId;
+
+	QWidget* widget;
+	QVBoxLayout* mainLayout;
+	QPushButton* connectButton;
+	QLabel* lensAttachedLabel;
+	QComboBox* exposureModeCombo;
+	QComboBox* isoCombo;
+	QComboBox* apertureCombo;
+	QComboBox* shutterSpeedCombo;
+	QPushButton* shootButton;
+	QPushButton* shootAfButton;
+
+	QVector<QAction*> actions;
 };
 
 };
