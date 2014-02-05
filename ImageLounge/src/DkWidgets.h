@@ -1736,16 +1736,21 @@ public:
 	~DkCamControls();
 	
 	void capabilityValueChanged(unsigned long capId);
+	void setVisible(bool visible);
 
 public slots:
 	void onDeviceOpened();
 	void onOpenDeviceError();
+	void stopActivities();
 
 protected slots:
 	void connectDevice();
+	void stateUpdate();
 
 protected:
+	void showEvent(QShowEvent *event);
 	void closeEvent(QCloseEvent *event);
+
 	void createLayout();
 	void updateLensAttachedLabel(bool attached);
 	void updateUiValues();
@@ -1759,13 +1764,14 @@ protected:
 	void updateExposureMode();
 	void setConnected(bool connected);
 	void closeDeviceAndSetState();
-	void stateUpdate();
 
+	static const int stateRefreshRate;
 	MaidFacade* maidFacade;
 	bool isConnected;
 	std::unique_ptr<ConnectDeviceDialog> connectDeviceDialog;
 	std::unique_ptr<OpenDeviceProgressDialog> openDeviceProgressDialog;
 	std::unique_ptr<OpenDeviceThread> openDeviceThread;
+	std::unique_ptr<QTimer> stateUpdateTimer;
 	std::set<uint32_t> deviceIds;
 	std::pair<uint32_t, bool> connectedDeviceId;
 

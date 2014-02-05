@@ -4932,6 +4932,8 @@ void DkSlider::createLayout() {
 
 // MAID / Camera Stuff --------------------------------------------------------------------
 
+const int DkCamControls::stateRefreshRate = 1000; // in ms
+
 #ifdef WITH_CAMCONTROLS
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
 	: QDockWidget(title, parent, flags), maidFacade(maidFacade), isConnected(false) {
@@ -4941,6 +4943,10 @@ DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidg
 	setConnected(false);
 	updateUiValues();
 	maidFacade->setCapValueChangeCallback([&] (ULONG cap) { capabilityValueChanged(cap); });
+
+	stateUpdateTimer.reset(new QTimer(this));
+	connect(stateUpdateTimer.get(), SIGNAL(timeout()), this, SLOT(stateUpdate())); 
+
 	//readSettings();
 }
 
@@ -5116,8 +5122,24 @@ void DkCamControls::closeDeviceAndSetState() {
 	updateUiValues();
 }
 
+void DkCamControls::stopActivities() {
+	stateUpdateTimer->stop();
+}
+
+void DkCamControls::showEvent(QShowEvent *event) {
+	//stateUpdateTimer->start(stateRefreshRate);
+}
+
 void DkCamControls::closeEvent(QCloseEvent* event) {
+	stopActivities();
 	//writeSettings();
+}
+
+void DkCamControls::setVisible(bool visible) {
+	if (!visible) {
+		stopActivities();
+	}
+	QDockWidget::setVisible(visible);
 }
 
 void DkCamControls::updateLensAttachedLabel(bool attached) {
@@ -5309,6 +5331,8 @@ ConnectDeviceDialog::ConnectDeviceDialog(MaidFacade* maidFacade, QWidget* parent
 
 void ConnectDeviceDialog::createLayout() {
 	//setObjectName(QStringLiteral("ConnectDeviceDialog"));
+	setWindowTitle(tr("nomacs - Select Device"));
+
 	setWindowModality(Qt::WindowModal);
 	resize(400, 300);
 	verticalLayout = new QVBoxLayout();
@@ -5390,7 +5414,7 @@ OpenDeviceProgressDialog::OpenDeviceProgressDialog(QWidget* parent)
 	setMinimum(0);
 	setMaximum(0);
 
-	setWindowTitle(tr("Connecting Device"));
+	setWindowTitle(tr("nomacs - Connecting Device"));
 }
 
 void OpenDeviceProgressDialog::closeEvent(QCloseEvent* e) {
