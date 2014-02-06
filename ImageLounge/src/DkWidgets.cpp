@@ -5062,8 +5062,13 @@ void DkCamControls::onDeviceOpened() {
 		}
 
 		if (!maidFacade->checkCameraType()) {
-			// TODO new GuiReport(GuiReport::ReportType::Warning, tr("This program is not compatible with the selected camera model."), this);
-			qDebug() << tr("This program is not compatible with the selected camera model.");
+			QMessageBox dialog(this);
+			dialog.setIcon(QMessageBox::Warning);
+			dialog.setText(tr("This program is not compatible with the selected camera model."));
+			dialog.show();
+			dialog.exec();
+
+			//qDebug() << tr("This program is not compatible with the selected camera model.");
 			closeDeviceAndSetState();
 			return;
 		}
@@ -5076,8 +5081,13 @@ void DkCamControls::onDeviceOpened() {
 }
 
 void DkCamControls::onOpenDeviceError() {
-	// TODO new GuiReport(GuiReport::ReportType::Warning, tr("The source could not be opened"), this);
-	qDebug() << tr("The source could not be opened");
+	QMessageBox dialog(this);
+	dialog.setIcon(QMessageBox::Warning);
+	dialog.setText(tr("The source could not be opened"));
+	dialog.show();
+	dialog.exec();
+
+	//qDebug() << tr("The source could not be opened");
 }
 
 void DkCamControls::setConnected(bool connected) {
@@ -5192,8 +5202,13 @@ void DkCamControls::onComboActivated(int index) {
 		MaidFacade::MaybeStringValues aperture = maidFacade->getAperture();
 		if (aperture.second && index != aperture.first.currentValue) {
 			if (!maidFacade->setAperture(apertureCombo->currentIndex())) {
-				//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Aperture value could not be set"), this);
-				qDebug() << "Aperture value could not be set";
+				QMessageBox dialog(this);
+				dialog.setIcon(QMessageBox::Warning);
+				dialog.setText(tr("Aperture value could not be set"));
+				dialog.show();
+				dialog.exec();
+
+				//qDebug() << tr("Aperture value could not be set");
 				apertureCombo->setCurrentIndex(aperture.first.currentValue);
 			}
 		}
@@ -5201,8 +5216,13 @@ void DkCamControls::onComboActivated(int index) {
 		MaidFacade::MaybeStringValues sensitivity = maidFacade->getSensitivity();
 		if (sensitivity.second && index != sensitivity.first.currentValue) {
 			if (!maidFacade->setSensitivity(isoCombo->currentIndex())) {
-				//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Sensitivity value could not be set"), this);
-				qDebug() << "Sensitivity value could not be set";
+				QMessageBox dialog(this);
+				dialog.setIcon(QMessageBox::Warning);
+				dialog.setText(tr("Sensitivity value could not be set"));
+				dialog.show();
+				dialog.exec();
+
+				//qDebug() << tr("Sensitivity value could not be set");
 				isoCombo->setCurrentIndex(sensitivity.first.currentValue);
 			}
 		}
@@ -5210,8 +5230,13 @@ void DkCamControls::onComboActivated(int index) {
 		MaidFacade::MaybeStringValues shutterSpeed = maidFacade->getShutterSpeed();
 		if (shutterSpeed.second && index != shutterSpeed.first.currentValue) {
 			if (!maidFacade->setShutterSpeed(shutterSpeedCombo->currentIndex())) {
-				//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Shutter speed value could not be set"), this);
-				qDebug() << "Shutter speed value could not be set";
+				QMessageBox dialog(this);
+				dialog.setIcon(QMessageBox::Warning);
+				dialog.setText(tr("Shutter speed value could not be set"));
+				dialog.show();
+				dialog.exec();
+
+				//qDebug() << tr("Shutter speed value could not be set");
 				shutterSpeedCombo->setCurrentIndex(shutterSpeed.first.currentValue);
 			}
 		}
@@ -5228,8 +5253,13 @@ void DkCamControls::onExposureModeActivated(int index) {
 		if (maidFacade->setExposureMode(index)) {
 			updateExposureModeDependentUiValues();
 		} else {
-			//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Exposure mode could not be set"), this);
-			qDebug() << "Exposure mode could not be set";
+			QMessageBox dialog(this);
+			dialog.setIcon(QMessageBox::Warning);
+			dialog.setText(tr("Exposure mode could not be set"));
+			dialog.show();
+			dialog.exec();
+
+			//qDebug() << tr("Exposure mode could not be set");
 			exposureModeCombo->setCurrentIndex(exposureMode.first.currentValue);
 		}
 	}
@@ -5368,8 +5398,13 @@ void DkCamControls::onShootButtonClicked() {
 	try {
 		maidFacade->shoot();
 	} catch (Maid::MaidError e) {
-		//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Could not capture image"), this);
-		qDebug() << "Could not capture image";
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("Could not capture image"));
+		dialog.show();
+		dialog.exec();
+
+		//qDebug() << tr("Could not capture image");
 	}
 }
 
@@ -5377,8 +5412,13 @@ void DkCamControls::onShootAfButtonClicked() {
 	try {
 		maidFacade->shoot(true);
 	} catch (Maid::MaidError e) {
-		//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Could not capture image with AF"), this);
-		qDebug() << "Could not capture image with AF";
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("Could not capture image with AF"));
+		dialog.show();
+		dialog.exec();
+
+		//qDebug() << tr("Could not capture image with AF");
 	}
 }
 
