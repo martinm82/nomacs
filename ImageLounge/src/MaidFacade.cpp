@@ -288,7 +288,7 @@ void MaidFacade::sourceIdleLoop(ULONG* count) {
 	sourceObject->async();
 }
 
-bool MaidFacade::shoot() {
+bool MaidFacade::shoot(bool withAf) {
 	ULONG captureCount = 0;
 	ULONG acquireCount = 0;
 	
@@ -298,7 +298,12 @@ bool MaidFacade::shoot() {
 	CompletionProcData* complData = new CompletionProcData();
 	complData->count = &captureCount;
 
-	int opRet = sourceObject->capStart(kNkMAIDCapability_Capture, completionProc, (NKREF) complData);
+
+	unsigned long cap = kNkMAIDCapability_Capture;
+	if (withAf) {
+		cap = kNkMAIDCapability_AFCapture;
+	}
+	int opRet = sourceObject->capStart(cap, completionProc, (NKREF) complData);
 	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
 		qDebug() << "Error executing capture capability";
 		return false;

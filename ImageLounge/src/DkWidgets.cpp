@@ -5024,6 +5024,8 @@ void DkCamControls::createLayout() {
 
 	// connections
 	connect(connectButton, SIGNAL(clicked()), this, SLOT(connectDevice()));
+	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShootButtonClicked()));
+	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAfButtonClicked()));
 }
 
 void DkCamControls::connectDevice() {
@@ -5148,7 +5150,7 @@ void DkCamControls::setVisible(bool visible) {
 }
 
 void DkCamControls::updateLensAttachedLabel(bool attached) {
-	if (attached) {
+	if (attached || !isConnected) {
 		lensAttachedLabel->setText(tr(""));
 	} else {
 		lensAttachedLabel->setText(tr("No lens attached"));
@@ -5359,6 +5361,24 @@ void DkCamControls::updateExposureMode() {
 	} else {
 		disconnect(exposureModeCombo, SIGNAL(activated(int)), this, SLOT(onExposureModeActivated(int)));
 		exposureModeCombo->setDisabled(true);
+	}
+}
+
+void DkCamControls::onShootButtonClicked() {
+	try {
+		maidFacade->shoot();
+	} catch (Maid::MaidError e) {
+		//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Could not capture image"), this);
+		qDebug() << "Could not capture image";
+	}
+}
+
+void DkCamControls::onShootAfButtonClicked() {
+	try {
+		maidFacade->shoot(true);
+	} catch (Maid::MaidError e) {
+		//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Could not capture image with AF"), this);
+		qDebug() << "Could not capture image with AF";
 	}
 }
 

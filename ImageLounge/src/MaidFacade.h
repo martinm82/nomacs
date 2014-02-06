@@ -74,7 +74,7 @@ public:
 	bool setShutterSpeed(size_t newValue);
 	bool setExposureMode(size_t newValue);
 	bool isLensAttached();
-	bool shoot();
+	bool shoot(bool withAf = false);
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 
 private:

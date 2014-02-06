@@ -1748,6 +1748,8 @@ protected slots:
 	void stateUpdate();
 	void onComboActivated(int);
 	void onExposureModeActivated(int index);
+	void onShootButtonClicked();
+	void onShootAfButtonClicked();
 
 protected:
 	void showEvent(QShowEvent *event);
