@@ -4974,6 +4974,7 @@ void DkCamControls::createLayout() {
 	QHBoxLayout* exposureModeLayout = new QHBoxLayout();
 	QLabel* exposureModeLabel = new QLabel(tr("Exposure Mode"));
 	exposureModeCombo = new QComboBox();
+	exposureModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 	exposureModeLayout->addWidget(exposureModeLabel);
 	exposureModeLayout->addWidget(exposureModeCombo);
 	exposureModeWidget->setLayout(exposureModeLayout);
@@ -5154,10 +5155,6 @@ void DkCamControls::updateLensAttachedLabel(bool attached) {
 	}
 }
 
-
-void DkCamControls::capabilityValueChanged(unsigned long capId) {
-}
-
 void DkCamControls::updateUiValues() {
 	// exposure mode first
 	updateExposureMode();
@@ -5170,161 +5167,199 @@ void DkCamControls::updateExposureModeDependentUiValues() {
 	updateShutterSpeed();
 }
 
-void DkCamControls::updateAperture() {
-	//MaidFacade::MaybeStringValues aperture;
-	//MaidFacade::MaybeUnsignedValues exposureMode;
-	//try {
-	//	aperture = maidFacade->readAperture();
-	//	exposureMode = maidFacade->getExposureMode();
-	//} catch (Maid::MaidError) {};
-
-	//if (aperture.second && exposureMode.second) {
-	//	updateApertureLabel(aperture.first.values.at(aperture.first.currentValue));
-	//	ui.apertureSlider->setMinimum(0);
-	//	ui.apertureSlider->setMaximum(aperture.first.values.size() - 1);
-	//	ui.apertureSlider->setValue(aperture.first.currentValue);
-
-	//	if (exposureMode.first.currentValue != kNkMAIDExposureMode_SpeedPriority &&
-	//			exposureMode.first.currentValue != kNkMAIDExposureMode_Program) {
-
-	//		connect(ui.apertureSlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
-	//		connect(ui.apertureSlider, SIGNAL(sliderReleased()), this, SLOT(onSliderReleased()));
-	//		ui.apertureSlider->setEnabled(true);
-	//	}
-	//} else {
-	//	updateApertureLabel();
-	//}
-
-	//if (!aperture.second || !exposureMode.second ||
-	//		exposureMode.first.currentValue == kNkMAIDExposureMode_SpeedPriority ||
-	//		exposureMode.first.currentValue == kNkMAIDExposureMode_Program) {
-
-	//	disconnect(ui.apertureSlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
-	//	disconnect(ui.apertureSlider, SIGNAL(sliderReleased(int)), this, SLOT(onSliderReleased(int)));
-	//	ui.apertureSlider->setDisabled(true);
-	//}
+void DkCamControls::capabilityValueChanged(uint32_t capId) {
+	switch (capId) {
+	case kNkMAIDCapability_Sensitivity:
+		updateSensitivity();
+		break;
+	case kNkMAIDCapability_Aperture:
+		updateAperture();
+		break;
+	case kNkMAIDCapability_ShutterSpeed:
+		updateShutterSpeed();
+		break;
+	case kNkMAIDCapability_ExposureMode:
+		updateExposureMode();
+		updateExposureModeDependentUiValues();
+		break;
+	}
 }
 
-void DkCamControls::updateApertureLabel(const std::string& value) {
-	//if (value.empty()) {
-	//	ui.apertureLabel->setText(defaultCapLabelText);
-	//} else {
-	//	ui.apertureLabel->setText(QString::fromStdString("F " + value));
-	//}
+void DkCamControls::onComboActivated(int index) {
+	if (QObject::sender() == apertureCombo) {
+		MaidFacade::MaybeStringValues aperture = maidFacade->getAperture();
+		if (aperture.second && index != aperture.first.currentValue) {
+			if (!maidFacade->setAperture(apertureCombo->currentIndex())) {
+				//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Aperture value could not be set"), this);
+				qDebug() << "Aperture value could not be set";
+				apertureCombo->setCurrentIndex(aperture.first.currentValue);
+			}
+		}
+	} else if (QObject::sender() == isoCombo) {
+		MaidFacade::MaybeStringValues sensitivity = maidFacade->getSensitivity();
+		if (sensitivity.second && index != sensitivity.first.currentValue) {
+			if (!maidFacade->setSensitivity(isoCombo->currentIndex())) {
+				//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Sensitivity value could not be set"), this);
+				qDebug() << "Sensitivity value could not be set";
+				isoCombo->setCurrentIndex(sensitivity.first.currentValue);
+			}
+		}
+	} else if (QObject::sender() == shutterSpeedCombo) {
+		MaidFacade::MaybeStringValues shutterSpeed = maidFacade->getShutterSpeed();
+		if (shutterSpeed.second && index != shutterSpeed.first.currentValue) {
+			if (!maidFacade->setShutterSpeed(shutterSpeedCombo->currentIndex())) {
+				//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Shutter speed value could not be set"), this);
+				qDebug() << "Shutter speed value could not be set";
+				shutterSpeedCombo->setCurrentIndex(shutterSpeed.first.currentValue);
+			}
+		}
+	}
+}
+
+void DkCamControls::onExposureModeActivated(int index) {
+	if (index <= -1) {
+		return;
+	}
+
+	MaidFacade::MaybeUnsignedValues exposureMode = maidFacade->getExposureMode();
+	if (exposureMode.second && index != exposureMode.first.currentValue) {
+		if (maidFacade->setExposureMode(index)) {
+			updateExposureModeDependentUiValues();
+		} else {
+			//TODO new GuiReport(GuiReport::ReportType::Warning, tr("Exposure mode could not be set"), this);
+			qDebug() << "Exposure mode could not be set";
+			exposureModeCombo->setCurrentIndex(exposureMode.first.currentValue);
+		}
+	}
+}
+
+void DkCamControls::updateAperture() {
+	MaidFacade::MaybeStringValues aperture;
+	MaidFacade::MaybeUnsignedValues exposureMode;
+	try {
+		aperture = maidFacade->readAperture();
+		exposureMode = maidFacade->getExposureMode();
+	} catch (Maid::MaidError) {};
+
+	apertureCombo->clear();
+	if (aperture.second && exposureMode.second) {
+		auto valueData = maidFacade->toQStringList(aperture.first);
+		const QStringList& values = valueData.first;
+		const size_t& currentIndex = valueData.second;
+		apertureCombo->insertItems(0, values);
+		apertureCombo->setCurrentIndex(currentIndex);
+
+		if (exposureMode.first.currentValue != kNkMAIDExposureMode_SpeedPriority &&
+				exposureMode.first.currentValue != kNkMAIDExposureMode_Program) {
+
+			connect(apertureCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
+			apertureCombo->setEnabled(true);
+		}
+	}
+
+	if (!aperture.second || !exposureMode.second ||
+			exposureMode.first.currentValue == kNkMAIDExposureMode_SpeedPriority ||
+			exposureMode.first.currentValue == kNkMAIDExposureMode_Program) {
+
+		disconnect(apertureCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
+		apertureCombo->setDisabled(true);
+	}
 }
 
 void DkCamControls::updateSensitivity() {
-	//MaidFacade::MaybeStringValues sensitivity;
-	//try {
-	//	sensitivity = maidFacade.readSensitivity();
-	//} catch (Maid::MaidError) {};
+	MaidFacade::MaybeStringValues sensitivity;
+	try {
+		sensitivity = maidFacade->readSensitivity();
+	} catch (Maid::MaidError) {};
 
-	//if (sensitivity.second) {
-	//	updateSensitivityLabel(sensitivity.first.values.at(sensitivity.first.currentValue));
-	//	ui.isoSlider->setMinimum(0);
-	//	ui.isoSlider->setMaximum(sensitivity.first.values.size() - 1);
-	//	ui.isoSlider->setValue(sensitivity.first.currentValue);
-	//	connect(ui.isoSlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
-	//	connect(ui.isoSlider, SIGNAL(sliderReleased()), this, SLOT(onSliderReleased()));
-	//	ui.isoSlider->setEnabled(true);
-	//} else {
-	//	updateSensitivityLabel();
-	//	disconnect(ui.isoSlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
-	//	disconnect(ui.isoSlider, SIGNAL(sliderReleased(int)), this, SLOT(onSliderReleased(int)));
-	//	ui.isoSlider->setDisabled(true);
-	//}
-}
+	isoCombo->clear();
+	if (sensitivity.second) {
+		auto valueData = maidFacade->toQStringList(sensitivity.first);
+		const QStringList& values = valueData.first;
+		const size_t& currentIndex = valueData.second;
+		isoCombo->insertItems(0, values);
+		isoCombo->setCurrentIndex(currentIndex);
 
-void DkCamControls::updateSensitivityLabel(const std::string& value) {
-	//if (value.empty()) {
-	//	ui.isoLabel->setText(defaultCapLabelText);
-	//} else {
-	//	ui.isoLabel->setText(QString::fromStdString(value));
-	//}
+		connect(isoCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
+		isoCombo->setEnabled(true);
+	} else {
+		disconnect(isoCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
+		isoCombo->setDisabled(true);
+	}
 }
 
 void DkCamControls::updateShutterSpeed() {
-	//MaidFacade::MaybeStringValues shutterSpeed;
-	//MaidFacade::MaybeUnsignedValues exposureMode;
-	//try {
-	//	shutterSpeed = maidFacade.readShutterSpeed();
-	//	exposureMode = maidFacade.getExposureMode();
-	//} catch (Maid::MaidError) {};
+	MaidFacade::MaybeStringValues shutterSpeed;
+	MaidFacade::MaybeUnsignedValues exposureMode;
+	try {
+		shutterSpeed = maidFacade->readShutterSpeed();
+		exposureMode = maidFacade->getExposureMode();
+	} catch (Maid::MaidError) {};
 
-	//if (shutterSpeed.second && exposureMode.second) {
-	//	updateShutterSpeedLabel(shutterSpeed.first.values.at(shutterSpeed.first.currentValue));
-	//	ui.shutterSpeedSlider->setMinimum(0);
-	//	ui.shutterSpeedSlider->setMaximum(shutterSpeed.first.values.size() - 1);
-	//	ui.shutterSpeedSlider->setValue(shutterSpeed.first.currentValue);
+	shutterSpeedCombo->clear();
+	if (shutterSpeed.second && exposureMode.second) {
+		auto valueData = maidFacade->toQStringList(shutterSpeed.first);
+		const QStringList& values = valueData.first;
+		const size_t& currentIndex = valueData.second;
+		shutterSpeedCombo->insertItems(0, values);
+		shutterSpeedCombo->setCurrentIndex(currentIndex);
 
-	//	if (exposureMode.first.currentValue != kNkMAIDExposureMode_AperturePriority &&
-	//			exposureMode.first.currentValue != kNkMAIDExposureMode_Program) {
+		if (exposureMode.first.currentValue != kNkMAIDExposureMode_AperturePriority &&
+				exposureMode.first.currentValue != kNkMAIDExposureMode_Program) {
 
-	//		connect(ui.shutterSpeedSlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
-	//		connect(ui.shutterSpeedSlider, SIGNAL(sliderReleased()), this, SLOT(onSliderReleased()));
-	//		ui.shutterSpeedSlider->setEnabled(true);
-	//	}
-	//} else {
-	//	updateShutterSpeedLabel();
-	//}
+			connect(shutterSpeedCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
+			shutterSpeedCombo->setEnabled(true);
+		}
+	}
 
-	//if (!shutterSpeed.second || !exposureMode.second ||
-	//		exposureMode.first.currentValue == kNkMAIDExposureMode_AperturePriority ||
-	//		exposureMode.first.currentValue == kNkMAIDExposureMode_Program) {
+	if (!shutterSpeed.second || !exposureMode.second ||
+			exposureMode.first.currentValue == kNkMAIDExposureMode_AperturePriority ||
+			exposureMode.first.currentValue == kNkMAIDExposureMode_Program) {
 
-	//	disconnect(ui.shutterSpeedSlider, SIGNAL(valueChanged(int)), this, SLOT(onSliderValueChanged(int)));
-	//	disconnect(ui.shutterSpeedSlider, SIGNAL(sliderReleased(int)), this, SLOT(onSliderReleased(int)));
-	//	ui.shutterSpeedSlider->setDisabled(true);
-	//}
-}
-
-void DkCamControls::updateShutterSpeedLabel(const std::string& value) {
-	//if (value.empty()) {
-	//	ui.shutterSpeedLabel->setText(defaultCapLabelText);
-	//} else {
-	//	ui.shutterSpeedLabel->setText(QString::fromStdString(value));
-	//}
+		disconnect(shutterSpeedCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
+		shutterSpeedCombo->setDisabled(true);
+	}
 }
 
 void DkCamControls::updateExposureMode() {
-	//MaidFacade::MaybeUnsignedValues exposureMode;
-	//try {
-	//	exposureMode = maidFacade.readExposureMode();
-	//} catch (Maid::MaidError) {};
+	MaidFacade::MaybeUnsignedValues exposureMode;
+	try {
+		exposureMode = maidFacade->readExposureMode();
+	} catch (Maid::MaidError) {};
+	
+	if (exposureMode.second) {
+		exposureModeCombo->clear();
+		for (auto v : exposureMode.first.values) {
+			switch (v) {
+			case kNkMAIDExposureMode_Program:
+				exposureModeCombo->addItem(tr("[P] Program Mode"));
+				break;
+			case kNkMAIDExposureMode_AperturePriority:
+				exposureModeCombo->addItem(tr("[A] Aperture Priority"));
+				break;
+			case kNkMAIDExposureMode_SpeedPriority:
+				exposureModeCombo->addItem(tr("[S] Speed Priority"));
+				break;
+			case kNkMAIDExposureMode_Manual:
+				exposureModeCombo->addItem(tr("[M] Manual"));
+				break;
+			}
+		}
+		exposureModeCombo->setCurrentIndex(exposureMode.first.currentValue);
 
-	//if (exposureMode.second) {
-	//	ui.exposureModeCombo->clear();
-	//	for (auto v : exposureMode.first.values) {
-	//		switch (v) {
-	//		case kNkMAIDExposureMode_Program:
-	//			ui.exposureModeCombo->addItem(tr("[P] Program Mode"));
-	//			break;
-	//		case kNkMAIDExposureMode_AperturePriority:
-	//			ui.exposureModeCombo->addItem(tr("[A] Aperture Priority"));
-	//			break;
-	//		case kNkMAIDExposureMode_SpeedPriority:
-	//			ui.exposureModeCombo->addItem(tr("[S] Speed Priority"));
-	//			break;
-	//		case kNkMAIDExposureMode_Manual:
-	//			ui.exposureModeCombo->addItem(tr("[M] Manual"));
-	//			break;
-	//		}
-	//	}
-	//	ui.exposureModeCombo->setCurrentIndex(exposureMode.first.currentValue);
+		// update lens state
+		if (!maidFacade->isLensAttached()) {
+			lensAttachedLabel->setText(tr("No Lens attached"));
+		} else {
+			lensAttachedLabel->clear();
+		}
 
-	//	// update lens state
-	//	if (!maidFacade.isLensAttached()) {
-	//		ui.lensAttachedLabel->setText(tr("No Lens attached"));
-	//	} else {
-	//		ui.lensAttachedLabel->clear();
-	//	}
-
-	//	connect(ui.exposureModeCombo, SIGNAL(activated(int)), this, SLOT(onExposureModeActivated(int)));
-	//	ui.exposureModeCombo->setEnabled(true);
-	//} else {
-	//	disconnect(ui.exposureModeCombo, SIGNAL(activated(int)), this, SLOT(onExposureModeActivated(int)));
-	//	ui.exposureModeCombo->setDisabled(true);
-	//}
+		connect(exposureModeCombo, SIGNAL(activated(int)), this, SLOT(onExposureModeActivated(int)));
+		exposureModeCombo->setEnabled(true);
+	} else {
+		disconnect(exposureModeCombo, SIGNAL(activated(int)), this, SLOT(onExposureModeActivated(int)));
+		exposureModeCombo->setDisabled(true);
+	}
 }
 
 ConnectDeviceDialog::ConnectDeviceDialog(MaidFacade* maidFacade, QWidget* parent)

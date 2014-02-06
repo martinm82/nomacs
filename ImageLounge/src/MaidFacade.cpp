@@ -354,6 +354,14 @@ bool MaidFacade::shoot() {
 	return true;
 }
 
+std::pair<QStringList, size_t> MaidFacade::toQStringList(const StringValues& values) {
+	QStringList list;
+	for (auto& s : values.values) {
+		list.append(QString::fromStdString(s));
+	}
+	return std::make_pair(list, values.currentValue);
+}
+
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 	MaidFacade* maidFacade = (MaidFacade*) ref;
 

@@ -6,6 +6,7 @@
 #include <vector>
 #include <functional>
 #include <QMutex>
+#include <QStringList>
 #include "MaidObject.h"
 
 std::string makePictureFilename(NkMAIDDataInfo* dataInfo, NkMAIDFileInfo* fileInfo = nullptr);
@@ -74,6 +75,7 @@ public:
 	bool setExposureMode(size_t newValue);
 	bool isLensAttached();
 	bool shoot();
+	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 
 private:
 	std::unique_ptr<Maid::MaidObject> moduleObject;

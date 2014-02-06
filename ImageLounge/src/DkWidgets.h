@@ -1735,7 +1735,7 @@ public:
 	DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
 	~DkCamControls();
 	
-	void capabilityValueChanged(unsigned long capId);
+	void capabilityValueChanged(uint32_t capId);
 	void setVisible(bool visible);
 
 public slots:
@@ -1746,6 +1746,8 @@ public slots:
 protected slots:
 	void connectDevice();
 	void stateUpdate();
+	void onComboActivated(int);
+	void onExposureModeActivated(int index);
 
 protected:
 	void showEvent(QShowEvent *event);
@@ -1756,11 +1758,8 @@ protected:
 	void updateUiValues();
 	void updateExposureModeDependentUiValues();
 	void updateAperture();
-	void updateApertureLabel(const std::string& value = std::string());
 	void updateSensitivity();
-	void updateSensitivityLabel(const std::string& value = std::string());
 	void updateShutterSpeed();
-	void updateShutterSpeedLabel(const std::string& value = std::string());
 	void updateExposureMode();
 	void setConnected(bool connected);
 	void closeDeviceAndSetState();
