@@ -4066,4 +4066,46 @@ void DkForceThumbDialog::setDir(const QDir& fileInfo) {
 	infoLabel->setText(tr("Compute thumbnails for all images in:\n %1\n").arg(fileInfo.absolutePath()));
 }
 
+// >NIKON: dummy class  [23.1.2014 markus]
+#ifdef NIKON_API
+
+DkNikonSettings::DkNikonSettings(const QString & title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
+
+	// my init goes here
+}
+
+void DkNikonSettings::setVisible(bool visible) {
+
+	// if nikon api is active, simulate the default behavior
+	QDockWidget::setVisible(visible);
+}
+
+QImage DkNikonSettings::someOtherPublicFunction() {
+
+	DkBasicLoader loader;
+	loader.loadGeneral(QFileInfo(":/nomacs/img/lena.jpg"));
+
+	return loader.image();
+}
+
+#else
+
+// here are the dummies
+DkNikonSettings::DkNikonSettings(const QString & title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
+
+	// my init goes here
+}
+
+void DkNikonSettings::setVisible(bool visible) {
+
+	qDebug() << "WARNING: someone tried to load the nikon settings, though the API is deactivated...";
+}
+
+QImage DkNikonSettings::someOtherPublicFunction() {
+
+	return QImage();	// return nothing - the caller must be able to deal with empty results anyway
+}
+
+#endif
+
 } // close namespace

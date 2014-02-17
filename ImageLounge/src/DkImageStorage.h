@@ -63,7 +63,7 @@ public:
 	/**< interpolation mapping OpenCV -> Qt */
 	enum{ipl_nearest, ipl_area, ipl_linear, ipl_cubic, ipl_lanczos, ipl_end};
 
-	// NIKON-API: add convert functions here (to convert between the nikon images and qt)
+	// >NIKON: add convert functions here (to convert between the nikon images and qt) [23.1.2014 markus]
 
 #ifdef WITH_OPENCV
 	

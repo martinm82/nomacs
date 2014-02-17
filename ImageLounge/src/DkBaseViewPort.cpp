@@ -609,6 +609,15 @@ void DkBaseViewPort::draw(QPainter *painter) {
 		painter->drawRect(imgViewRect);
 	}
 
+	// >NIKON: set here a new if/else if  [23.1.2014 markus]
+	// e.g. if (nikonLiveStream)
+	// then retrieve the new image
+	// you can use a QTimer that calls the this->update() to load the next image
+	// if the nikon api triggers new image events it's better to use that trigger
+	// QByteArray
+
+	//QImage nImg;
+	//nImg.load("Josef.jpg");
 
 	if (!movie || !movie->isValid())
 		painter->drawImage(imgViewRect, imgQt, imgQt.rect());

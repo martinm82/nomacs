@@ -189,6 +189,9 @@ bool DkBasicLoader::loadGeneral(QFileInfo file, bool rotateImg) {
 		if (imgLoaded) loader = webp_loader;
 	}
 
+	// >NIKON: add nikon RAW loader here [23.1.2014 markus]
+	// if (!imgLoaded && newSuffix.contains(QRegExp("(nef)", Qt::CaseInsensitive))) 
+
 	// RAW loader
 	if (!imgLoaded) {
 		
@@ -890,6 +893,9 @@ bool DkBasicLoader::save(QFileInfo fileInfo, QImage img, int compression) {
 
 	qDebug() << "extension: " << fileInfo.suffix();
 
+	// >NIKON: add save RAW here  [23.1.2014 markus]
+	// if (fileInfo.suffix().contains("nef", Qt::CaseInsensitive))
+
 	if (fileInfo.suffix().contains("webp", Qt::CaseInsensitive)) {
 		saved = saveWebPFile(fileInfo, img, compression);
 	}
@@ -1266,6 +1272,9 @@ void DkImageLoader::initFileFilters() {
 
 
 	QList<QByteArray> qtFormats = QImageReader::supportedImageFormats();
+
+	// >NIKON: add save filter here  [23.1.2014 markus]
+	//saveFilters.append("Nikon RAW (*.nef)");
 
 	// formats we can save
 	if (qtFormats.contains("png"))		saveFilters.append("Portable Network Graphics (*.png)");
