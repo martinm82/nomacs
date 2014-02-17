@@ -281,6 +281,16 @@ enum panelActions {
 	menu_panel_end,
 };
 
+#ifdef WITH_CAMCONTROLS
+enum cameraActions {
+	menu_camera_connect,
+	menu_camera_shoot,
+	menu_camera_shoot_af,
+
+	menu_camera_end
+};
+#endif
+
 enum viewActions {
 	menu_view_fullscreen,
 	menu_view_reset,
@@ -431,6 +441,9 @@ public:
 	QVector<QAction* > getPanelActions();
 	QVector<QAction* > getViewActions();
 	QVector<QAction* > getSyncActions();
+#ifdef WITH_CAMCONTROLS
+	QVector<QAction* > getCameraActions();
+#endif
 	void loadFile(const QFileInfo& file, bool silent = false);
 
 	static void updateAll();
@@ -518,8 +531,9 @@ public slots:
 	void enableMovieActions(bool enable);
 	void clearFileHistory();
 	void clearFolderHistory();
-	void showCamControls(bool show);
 	//void shareFacebook();
+	void showCamControls(bool show);
+	void updateCameraStatus(bool connected);
 
 	// batch actions
 	void computeThumbsBatch();
@@ -571,6 +585,7 @@ protected:
 	QVector<QAction *> syncActions;
 	QVector<QAction *> lanActions;
 	QVector<QAction *> helpActions;
+	QVector<QAction* > cameraActions;
 	//QVector<QAction *> tcpViewerActions;
 	
 	// icons
@@ -591,6 +606,7 @@ protected:
 	QMenu* syncMenu;
 	QMenu* helpMenu;
 	QMenu* contextMenu;
+	QMenu* cameraMenu;
 
 	// sub menus
 	QMenu* fileFilesMenu;

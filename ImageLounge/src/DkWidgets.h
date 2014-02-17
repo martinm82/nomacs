@@ -1738,18 +1738,21 @@ public:
 	void capabilityValueChanged(uint32_t capId);
 	void setVisible(bool visible);
 
+signals:
+	void statusChanged(bool connected);
+
 public slots:
+	void connectDevice();
+	void onShoot();
+	void onShootAf();
 	void onDeviceOpened();
 	void onOpenDeviceError();
 	void stopActivities();
 
 protected slots:
-	void connectDevice();
 	void stateUpdate();
 	void onComboActivated(int);
 	void onExposureModeActivated(int index);
-	void onShootButtonClicked();
-	void onShootAfButtonClicked();
 
 protected:
 	void showEvent(QShowEvent *event);
@@ -1778,7 +1781,6 @@ protected:
 
 	QWidget* widget;
 	QVBoxLayout* mainLayout;
-	QPushButton* connectButton;
 	QLabel* lensAttachedLabel;
 	QComboBox* exposureModeCombo;
 	QComboBox* isoCombo;

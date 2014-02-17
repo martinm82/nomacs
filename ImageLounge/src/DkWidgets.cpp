@@ -4962,8 +4962,6 @@ void DkCamControls::createLayout() {
 	QHBoxLayout* connectionLayout = new QHBoxLayout();
 	lensAttachedLabel = new QLabel();
 	updateLensAttachedLabel(false);
-	connectButton = new QPushButton(tr("Connect device..."));
-	connectionLayout->addWidget(connectButton);
 	connectionLayout->addWidget(lensAttachedLabel);
 	connectionLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
 	mainLayout->addLayout(connectionLayout);
@@ -5023,30 +5021,29 @@ void DkCamControls::createLayout() {
 	setWidget(widget);
 
 	// connections
-	connect(connectButton, SIGNAL(clicked()), this, SLOT(connectDevice()));
-	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShootButtonClicked()));
-	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAfButtonClicked()));
+	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShoot()));
+	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAf()));
 }
 
 void DkCamControls::connectDevice() {
 	if (isConnected) {
 		closeDeviceAndSetState();
-	} else {
-		connectDeviceDialog.reset(new ConnectDeviceDialog(maidFacade, this));
-		stateUpdate(); // avoid delay
-		if (connectDeviceDialog->exec() == QDialog::Accepted && connectDeviceDialog->getSelectedId().second) {
-			try {
-				openDeviceProgressDialog.reset(new OpenDeviceProgressDialog(this));
+	}
 
-				connectedDeviceId = connectDeviceDialog->getSelectedId();
-				openDeviceThread.reset(new OpenDeviceThread(maidFacade, connectedDeviceId.first));
-				connect(openDeviceThread.get(), SIGNAL(finished()), this, SLOT(onDeviceOpened()));
-				connect(openDeviceThread.get(), SIGNAL(error()), this, SLOT(onOpenDeviceError()));
-				openDeviceThread->start();
-				openDeviceProgressDialog->exec();
-			} catch (Maid::MaidError e) {
-				onOpenDeviceError();
-			}
+	connectDeviceDialog.reset(new ConnectDeviceDialog(maidFacade, this));
+	stateUpdate(); // avoid delay
+	if (connectDeviceDialog->exec() == QDialog::Accepted && connectDeviceDialog->getSelectedId().second) {
+		try {
+			openDeviceProgressDialog.reset(new OpenDeviceProgressDialog(this));
+
+			connectedDeviceId = connectDeviceDialog->getSelectedId();
+			openDeviceThread.reset(new OpenDeviceThread(maidFacade, connectedDeviceId.first));
+			connect(openDeviceThread.get(), SIGNAL(finished()), this, SLOT(onDeviceOpened()));
+			connect(openDeviceThread.get(), SIGNAL(error()), this, SLOT(onOpenDeviceError()));
+			openDeviceThread->start();
+			openDeviceProgressDialog->exec();
+		} catch (Maid::MaidError e) {
+			onOpenDeviceError();
 		}
 	}
 }
@@ -5093,12 +5090,10 @@ void DkCamControls::onOpenDeviceError() {
 void DkCamControls::setConnected(bool connected) {
 	if (connected) {
 		isConnected = true;
-		//connectionStatusLabel->setText(tr("Connected to device #%1").arg(connectedDeviceId.first));
-		connectButton->setText(tr("Disconnect"));
+		emit statusChanged(true);
 	} else {
 		isConnected = false;
-		//connectionStatusLabel->setText(tr("Not Connected"));
-		connectButton->setText(tr("Connect..."));
+		emit statusChanged(false);
 	}
 }
 
@@ -5394,7 +5389,7 @@ void DkCamControls::updateExposureMode() {
 	}
 }
 
-void DkCamControls::onShootButtonClicked() {
+void DkCamControls::onShoot() {
 	try {
 		maidFacade->shoot();
 	} catch (Maid::MaidError e) {
@@ -5408,7 +5403,7 @@ void DkCamControls::onShootButtonClicked() {
 	}
 }
 
-void DkCamControls::onShootAfButtonClicked() {
+void DkCamControls::onShootAf() {
 	try {
 		maidFacade->shoot(true);
 	} catch (Maid::MaidError e) {

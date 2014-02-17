@@ -142,6 +142,14 @@ void DkNoMacs::init() {
 	appManager = new DkAppManager(this);
 	connect(appManager, SIGNAL(openFileSignal(QAction*)), this, SLOT(openFileWith(QAction*)));
 
+	// camera stuff
+#ifdef WITH_CAMCONTROLS
+	maidFacade = new MaidFacade();
+	maidFacade->init();
+	showCamControls(false);
+	connect(camControls, SIGNAL(statusChanged(bool)), this, SLOT(updateCameraStatus(bool)));
+#endif
+
 	// shortcuts and actions
 	createIcons();
 	createActions();
@@ -212,9 +220,6 @@ void DkNoMacs::init() {
 	connect(viewport(), SIGNAL(movieLoadedSignal(bool)), this, SLOT(enableMovieActions(bool)));
 
 	enableMovieActions(false);
-
-	maidFacade = new MaidFacade();
-	maidFacade->init();
 
 // clean up nomacs
 #ifdef Q_WS_WIN
@@ -647,6 +652,13 @@ void DkNoMacs::createMenu() {
 #endif
 #ifdef WITH_OPENCV
 	toolsMenu->addAction(toolsActions[menu_tools_mosaic]);
+#endif
+
+#ifdef WITH_CAMCONTROLS
+	cameraMenu = menu->addMenu(tr("&Camera"));
+	cameraMenu->addAction(cameraActions[menu_camera_connect]);
+	cameraMenu->addAction(cameraActions[menu_camera_shoot]);
+	cameraMenu->addAction(cameraActions[menu_camera_shoot_af]);
 #endif
 
 	// no sync menu in frameless view
@@ -1161,6 +1173,24 @@ void DkNoMacs::createActions() {
 	toolsActions[menu_tools_mosaic] = new QAction(tr("&Mosaic Image"), this);
 	toolsActions[menu_tools_mosaic]->setStatusTip(tr("Create a Mosaic Image"));
 	connect(toolsActions[menu_tools_mosaic], SIGNAL(triggered()), this, SLOT(computeMosaic()));
+
+	// camera menu
+#ifdef WITH_CAMCONTROLS
+	cameraActions.resize(menu_camera_end);
+
+	cameraActions[menu_camera_connect] = new QAction(tr("Connect"), this);
+	cameraActions[menu_camera_connect]->setStatusTip(tr("Connect a camera"));
+	cameraActions[menu_camera_connect]->setEnabled(true);
+	connect(cameraActions[menu_camera_connect], SIGNAL(triggered()), camControls, SLOT(connectDevice()));
+
+	cameraActions[menu_camera_shoot] = new QAction(tr("Shoot"), this);
+	cameraActions[menu_camera_shoot]->setEnabled(false);
+	connect(cameraActions[menu_camera_shoot], SIGNAL(triggered()), camControls, SLOT(onShoot()));
+
+	cameraActions[menu_camera_shoot_af] = new QAction(tr("Shoot with AF"), this);
+	cameraActions[menu_camera_shoot_af]->setEnabled(false);
+	connect(cameraActions[menu_camera_shoot_af], SIGNAL(triggered()), camControls, SLOT(onShootAf()));
+#endif
 
 	// help menu
 	helpActions.resize(menu_help_end);
@@ -3229,6 +3259,16 @@ void DkNoMacs::showCamControls(bool show) {
 	}
 
 	camControls->setVisible(show);
+#endif
+}
+
+void DkNoMacs::updateCameraStatus(bool connected) {
+#ifdef WITH_CAMCONTROLS
+	if (connected) {
+		cameraActions[menu_camera_connect]->setText(tr("Disconnect"));
+	} else {
+		cameraActions[menu_camera_connect]->setText(tr("Connect"));
+	}
 #endif
 }
 
