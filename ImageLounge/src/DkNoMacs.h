@@ -155,7 +155,7 @@ enum {
 	shortcut_show_explorer	= Qt::Key_E,
 	shortcut_show_player	= Qt::Key_P,
 	shortcut_show_exif		= Qt::Key_M,
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	shortcut_show_camcontrols = Qt::CTRL + Qt::ALT + Qt::Key_C,
 #endif
 	shortcut_show_info		= Qt::Key_I,
@@ -274,22 +274,12 @@ enum panelActions {
 	menu_panel_histogram,
 	menu_panel_overview,
 	menu_panel_explorer,
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	menu_panel_camera,
 #endif
 
 	menu_panel_end,
 };
-
-#ifdef WITH_CAMCONTROLS
-enum cameraActions {
-	menu_camera_connect,
-	menu_camera_shoot,
-	menu_camera_shoot_af,
-
-	menu_camera_end
-};
-#endif
 
 enum viewActions {
 	menu_view_fullscreen,
@@ -348,6 +338,17 @@ enum helpActions {
 //
 //		menu_nikon_end,		// this is important!
 // }
+
+
+#ifdef NIKON_API
+enum cameraActions {
+	menu_camera_connect,
+	menu_camera_shoot,
+	menu_camera_shoot_af,
+
+	menu_camera_end
+};
+#endif
 
 enum shortcuts {
 	sc_test_img,
@@ -450,7 +451,7 @@ public:
 	QVector<QAction* > getPanelActions();
 	QVector<QAction* > getViewActions();
 	QVector<QAction* > getSyncActions();
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	QVector<QAction* > getCameraActions();
 #endif
 	void loadFile(const QFileInfo& file, bool silent = false);

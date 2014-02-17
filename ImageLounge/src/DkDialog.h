@@ -60,6 +60,7 @@
 #include "DkWidgets.h"
 #include "DkViewPort.h"
 #include "DkThumbs.h"
+#include "MaidFacade.h"
 
 namespace nmc {
 
@@ -924,17 +925,127 @@ protected:
 
 // >NIKON: if you create a dock widget for e.g. aparture settings, put it here like: [23.1.2014 markus]
 // important: no code in the header!
-class DkNikonSettings : public QDockWidget {
+
+class OpenDeviceProgressDialog : public QProgressDialog {
+public:
+	OpenDeviceProgressDialog(QWidget* parent);
+	~OpenDeviceProgressDialog() {}
+
+protected:
+	void closeEvent(QCloseEvent* e);
+};
+
+class ConnectDeviceDialog : public QDialog {
 	Q_OBJECT
 
 public:
-	DkNikonSettings(const QString & title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
+	ConnectDeviceDialog(MaidFacade* maidFacade, QWidget *parent = 0);
+	virtual ~ConnectDeviceDialog() {}
 
-	QImage someOtherPublicFunction();
+	std::pair<uint32_t, bool> getSelectedId();
+	void updateDevicesList(std::set<uint32_t> deviceIds);
+
+private:
+	class DeviceListWidgetItem : public QListWidgetItem {
+		public:
+			DeviceListWidgetItem(const QString& text, unsigned long id) 
+				: QListWidgetItem(text), id(id) {}
+
+			unsigned long getId() {
+				return id;
+			}
+		private:
+			unsigned long id;
+	};
+
+	void createLayout();
+
+	MaidFacade* maidFacade;
+	QVBoxLayout* verticalLayout;
+    QListWidget* devicesListWidget;
+    QHBoxLayout* hboxLayout;
+    QSpacerItem* spacerItem;
+	QDialogButtonBox* buttonBox;
+};
+
+class OpenDeviceThread : public QThread {
+	Q_OBJECT
+
+	public:
+		OpenDeviceThread(MaidFacade *maidFacade, ULONG deviceId);
+		~OpenDeviceThread() {}
+
+	signals:
+		void error();
+
+	protected:
+		void run();
+
+	private:
+		MaidFacade *maidFacade;
+		ULONG deviceId;
+};
+
+class DkCamControls : public QDockWidget {
+	Q_OBJECT
+
+public:
+	DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
+	~DkCamControls();
+	
+	void capabilityValueChanged(uint32_t capId);
+	void setVisible(bool visible);
+
+signals:
+	void statusChanged(bool connected);
 
 public slots:
-	virtual void setVisible(bool visible);
+	void connectDevice();
+	void onShoot();
+	void onShootAf();
+	void onDeviceOpened();
+	void onOpenDeviceError();
+	void stopActivities();
 
+protected slots:
+	void stateUpdate();
+	void onComboActivated(int);
+	void onExposureModeActivated(int index);
+
+protected:
+	void showEvent(QShowEvent *event);
+	void closeEvent(QCloseEvent *event);
+
+	void createLayout();
+	void updateLensAttachedLabel(bool attached);
+	void updateUiValues();
+	void updateExposureModeDependentUiValues();
+	void updateAperture();
+	void updateSensitivity();
+	void updateShutterSpeed();
+	void updateExposureMode();
+	void setConnected(bool connected);
+	void closeDeviceAndSetState();
+
+	static const int stateRefreshRate;
+	MaidFacade* maidFacade;
+	bool isConnected;
+	std::unique_ptr<ConnectDeviceDialog> connectDeviceDialog;
+	std::unique_ptr<OpenDeviceProgressDialog> openDeviceProgressDialog;
+	std::unique_ptr<OpenDeviceThread> openDeviceThread;
+	std::unique_ptr<QTimer> stateUpdateTimer;
+	std::set<uint32_t> deviceIds;
+	std::pair<uint32_t, bool> connectedDeviceId;
+
+	QWidget* widget;
+	QVBoxLayout* mainLayout;
+	QLabel* lensAttachedLabel;
+	QComboBox* exposureModeCombo;
+	QComboBox* isoCombo;
+	QComboBox* apertureCombo;
+	QComboBox* shutterSpeedCombo;
+	QPushButton* shootButton;
+	QPushButton* shootAfButton;
 };
 
 

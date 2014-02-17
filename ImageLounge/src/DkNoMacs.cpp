@@ -143,7 +143,7 @@ void DkNoMacs::init() {
 	connect(appManager, SIGNAL(openFileSignal(QAction*)), this, SLOT(openFileWith(QAction*)));
 
 	// camera stuff
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	maidFacade = new MaidFacade();
 	maidFacade->init();
 	showCamControls(false);
@@ -630,7 +630,7 @@ void DkNoMacs::createMenu() {
 	panelMenu->addAction(panelActions[menu_panel_thumbview]);
 	panelMenu->addAction(panelActions[menu_panel_scroller]);
 	panelMenu->addAction(panelActions[menu_panel_exif]);
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	panelMenu->addAction(panelActions[menu_panel_camera]);
 #endif
 	
@@ -654,7 +654,7 @@ void DkNoMacs::createMenu() {
 	toolsMenu->addAction(toolsActions[menu_tools_mosaic]);
 #endif
 
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	cameraMenu = menu->addMenu(tr("&Camera"));
 	cameraMenu->addAction(cameraActions[menu_camera_connect]);
 	cameraMenu->addAction(cameraActions[menu_camera_shoot]);
@@ -1038,7 +1038,7 @@ void DkNoMacs::createActions() {
 	panelActions[menu_panel_histogram]->setCheckable(true);
 	connect(panelActions[menu_panel_histogram], SIGNAL(toggled(bool)), vp->getController(), SLOT(showHistogram(bool)));
 
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	panelActions[menu_panel_camera] = new QAction(tr("&Camera Controls"), this);
 	panelActions[menu_panel_camera]->setShortcut(QKeySequence(shortcut_show_camcontrols));
 	panelActions[menu_panel_camera]->setStatusTip(tr("Shows the Camera Controls"));
@@ -1175,7 +1175,7 @@ void DkNoMacs::createActions() {
 	connect(toolsActions[menu_tools_mosaic], SIGNAL(triggered()), this, SLOT(computeMosaic()));
 
 	// camera menu
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	cameraActions.resize(menu_camera_end);
 
 	cameraActions[menu_camera_connect] = new QAction(tr("Connect"), this);
@@ -3248,7 +3248,7 @@ int DkNoMacs::infoDialog(QString msg, QWidget* parent, QString title) {
 // MAID / Camera stuff -------------------------------------------------------------
 
 void DkNoMacs::showCamControls(bool show) {
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	if (!camControls) {
 		// get last location
 		QSettings settings;
@@ -3263,7 +3263,7 @@ void DkNoMacs::showCamControls(bool show) {
 }
 
 void DkNoMacs::updateCameraStatus(bool connected) {
-#ifdef WITH_CAMCONTROLS
+#ifdef NIKON_API
 	if (connected) {
 		cameraActions[menu_camera_connect]->setText(tr("Disconnect"));
 	} else {
