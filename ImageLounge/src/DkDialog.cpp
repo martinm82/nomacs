@@ -27,7 +27,6 @@
 
 #include "DkDialog.h"
 #include "DkNoMacs.h"
-#include "FlowLayout.h"
 #include "MaidError.h"
 
 namespace nmc {
@@ -4071,10 +4070,11 @@ void DkForceThumbDialog::setDir(const QDir& fileInfo) {
 // >NIKON: dummy class  [23.1.2014 markus]
 
 const int DkCamControls::stateRefreshRate = 1000; // in ms
+const int DkCamControls::horizontalItemSpacing = 10;
 
 #ifdef NIKON_API
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
-	: QDockWidget(title, parent, flags), maidFacade(maidFacade), isConnected(false) {
+	: QDockWidget(title, parent, flags), maidFacade(maidFacade), isConnected(false), mainLayout(nullptr) {
 
 	setObjectName("DkCamControls");
 	createLayout();
@@ -4094,20 +4094,14 @@ DkCamControls::~DkCamControls() {
 
 void DkCamControls::createLayout() {
 	widget = new QWidget();
-	mainLayout = new QVBoxLayout();
-	widget->setLayout(mainLayout);
 
-	QHBoxLayout* connectionLayout = new QHBoxLayout();
+	connectionLayout = new QHBoxLayout();
 	lensAttachedLabel = new QLabel();
 	updateLensAttachedLabel(false);
 	connectionLayout->addWidget(lensAttachedLabel);
-	connectionLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-	mainLayout->addLayout(connectionLayout);
-
-	FlowLayout* flowLayout = new FlowLayout();
 
 	QWidget* exposureModeWidget = new QWidget();
-	QHBoxLayout* exposureModeLayout = new QHBoxLayout();
+	exposureModeLayout = new QHBoxLayout();
 	QLabel* exposureModeLabel = new QLabel(tr("Exposure Mode"));
 	exposureModeCombo = new QComboBox();
 	exposureModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
@@ -4116,7 +4110,7 @@ void DkCamControls::createLayout() {
 	exposureModeWidget->setLayout(exposureModeLayout);
 
 	QWidget* apertureWidget = new QWidget();
-	QHBoxLayout* apertureLayout = new QHBoxLayout();
+	apertureLayout = new QHBoxLayout();
 	QLabel* apertureLabel = new QLabel(tr("Aperture"));
 	apertureCombo = new QComboBox();
 	apertureLayout->addWidget(apertureLabel);
@@ -4124,7 +4118,7 @@ void DkCamControls::createLayout() {
 	apertureWidget->setLayout(apertureLayout);
 
 	QWidget* isoWidget = new QWidget();
-	QHBoxLayout* isoLayout = new QHBoxLayout();
+	isoLayout = new QHBoxLayout();
 	QLabel* isoLabel = new QLabel(tr("Sensitivity (ISO)"));
 	isoCombo = new QComboBox();
 	isoLayout->addWidget(isoLabel);
@@ -4132,35 +4126,52 @@ void DkCamControls::createLayout() {
 	isoWidget->setLayout(isoLayout);
 
 	QWidget* shutterSpeedWidget = new QWidget();
-	QHBoxLayout* shutterSpeedLayout = new QHBoxLayout();
+	shutterSpeedLayout = new QHBoxLayout();
 	QLabel* shutterSpeedLabel = new QLabel(tr("Shutter Speed"));
 	shutterSpeedCombo = new QComboBox();
 	shutterSpeedLayout->addWidget(shutterSpeedLabel);
 	shutterSpeedLayout->addWidget(shutterSpeedCombo);
 	shutterSpeedWidget->setLayout(shutterSpeedLayout);
 
-	flowLayout->addWidget(exposureModeWidget);
-	flowLayout->addWidget(apertureWidget);
-	flowLayout->addWidget(isoWidget);
-	flowLayout->addWidget(shutterSpeedWidget);
-	mainLayout->addLayout(flowLayout);
-
-	QHBoxLayout* buttonsLayout = new QHBoxLayout();
+	buttonsLayout = new QHBoxLayout();
 	shootButton = new QPushButton(tr("Shoot"));
 	shootAfButton = new QPushButton(tr("Shoot with AF"));
 	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
 	buttonsLayout->addWidget(shootButton);
 	buttonsLayout->addWidget(shootAfButton);
 	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-	mainLayout->addLayout(buttonsLayout);
 
-	mainLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
-	
+	boxFillerV = new QSpacerItem(20, 20, QSizePolicy::Minimum, QSizePolicy::Expanding);
+	boxFillerH = new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+	mainLayout = new QVBoxLayout();
+	mainLayout->addWidget(exposureModeWidget);
+	mainLayout->addWidget(apertureWidget);
+	mainLayout->addWidget(isoWidget);
+	mainLayout->addWidget(shutterSpeedWidget);
+	mainLayout->addLayout(buttonsLayout);
+	mainLayout->addLayout(connectionLayout);
+
+	outerLayout = new QVBoxLayout();
+	outerLayout->addLayout(mainLayout);
+	outerLayout->addSpacerItem(boxFillerV);
+
+	widget->setLayout(outerLayout);
 	setWidget(widget);
 
 	// connections
 	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShoot()));
 	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAf()));
+	connect(this, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(arrangeLayout(Qt::DockWidgetArea)));
+	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
+}
+
+void DkCamControls::arrangeLayout(Qt::DockWidgetArea location) {
+	if (location == Qt::DockWidgetArea::TopDockWidgetArea || location == Qt::DockWidgetArea::BottomDockWidgetArea) {
+		mainLayout->setDirection(QBoxLayout::Direction::LeftToRight);
+	} else { //if (location == Qt::DockWidgetArea::LeftDockWidgetArea || location == Qt::DockWidgetArea::RightDockWidgetArea) {
+		mainLayout->setDirection(QBoxLayout::Direction::TopToBottom);
+	}
 }
 
 void DkCamControls::connectDevice() {

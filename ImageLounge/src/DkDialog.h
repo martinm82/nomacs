@@ -1011,6 +1011,7 @@ protected slots:
 	void stateUpdate();
 	void onComboActivated(int);
 	void onExposureModeActivated(int index);
+	void arrangeLayout(Qt::DockWidgetArea location = Qt::DockWidgetArea::NoDockWidgetArea);
 
 protected:
 	void showEvent(QShowEvent *event);
@@ -1028,6 +1029,7 @@ protected:
 	void closeDeviceAndSetState();
 
 	static const int stateRefreshRate;
+	static const int horizontalItemSpacing;
 	MaidFacade* maidFacade;
 	bool isConnected;
 	std::unique_ptr<ConnectDeviceDialog> connectDeviceDialog;
@@ -1038,7 +1040,8 @@ protected:
 	std::pair<uint32_t, bool> connectedDeviceId;
 
 	QWidget* widget;
-	QVBoxLayout* mainLayout;
+	QBoxLayout* mainLayout;
+	QBoxLayout* outerLayout;
 	QLabel* lensAttachedLabel;
 	QComboBox* exposureModeCombo;
 	QComboBox* isoCombo;
@@ -1046,6 +1049,14 @@ protected:
 	QComboBox* shutterSpeedCombo;
 	QPushButton* shootButton;
 	QPushButton* shootAfButton;
+	QHBoxLayout* connectionLayout;
+	QHBoxLayout* exposureModeLayout;
+	QHBoxLayout* apertureLayout;
+	QHBoxLayout* isoLayout;
+	QHBoxLayout* shutterSpeedLayout;
+	QHBoxLayout* buttonsLayout;
+	QSpacerItem* boxFillerV;
+	QSpacerItem* boxFillerH;
 };
 
 
