@@ -75,6 +75,7 @@ public:
 	bool setExposureMode(size_t newValue);
 	bool isLensAttached();
 	bool shoot(bool withAf = false);
+	bool acquireItemObjects(const std::unique_ptr<Maid::MaidObject>& sourceObject);
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 
 private:

@@ -290,14 +290,12 @@ void MaidFacade::sourceIdleLoop(ULONG* count) {
 
 bool MaidFacade::shoot(bool withAf) {
 	ULONG captureCount = 0;
-	ULONG acquireCount = 0;
 	
 	NkMAIDCapInfo capInfo;
 	sourceObject->getCapInfo(kNkMAIDCapability_Capture, &capInfo);
 
 	CompletionProcData* complData = new CompletionProcData();
 	complData->count = &captureCount;
-
 
 	unsigned long cap = kNkMAIDCapability_Capture;
 	if (withAf) {
@@ -311,26 +309,89 @@ bool MaidFacade::shoot(bool withAf) {
 
 	sourceIdleLoop(&captureCount);
 
+	//std::vector<ULONG> itemIds;
+	//itemIds = sourceObject->getChildren();
+	//if (itemIds.size() <= 0) {
+	//	qDebug() << "No item objects";
+	//	return false;
+	//}
+
+	//// open the item object
+	//std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get())); // we always choose the one at pos 0
+	//if (!itemObject) {
+	//	qDebug() << "Item object #0 could not be opened!";
+	//	return false;
+	//}
+
+	return acquireItemObjects(sourceObject);
+
+	//itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
+	//ULONG dataTypes;
+	//itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
+
+	//if (dataTypes & kNkMAIDDataObjType_Image) {
+	//	std::unique_ptr<MaidObject> dataObject(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
+	//	if (!dataObject) {
+	//		qDebug() << "Data object could not be opened!";
+	//		return false;
+	//	}
+
+	//	DataProcData* ref = new DataProcData();
+	//	ref->id = dataObject->getID();
+
+	//	complData = new CompletionProcData();
+	//	complData->count = &acquireCount;
+	//	complData->data = ref;
+
+	//	//dataObject->capSet(kNkMAIDCapability_DataProc, kNkMAIDDataType_CallbackPtr, (NKPARAM) &stProc);
+	//	dataObject->setDataCallback((NKREF) ref, dataProc);
+	//	opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
+	//	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
+	//		qDebug() << "Error acquiring data";
+	//		return false;
+	//	}
+
+	//	sourceIdleLoop(&acquireCount);
+
+	//	dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
+	//}
+
+	//return true;
+}
+
+bool MaidFacade::acquireItemObjects(const std::unique_ptr<MaidObject>& itemObject) {
+	CompletionProcData* complData;
+	NkMAIDCapInfo capInfo;
 	std::vector<ULONG> itemIds;
-	itemIds = sourceObject->getChildren();
-	if (itemIds.size() <= 0) {
-		qDebug() << "No item objects";
-		return false;
-	}
 
-	// open the item object
-	std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get()));
-	if (!itemObject) {
-		qDebug() << "Item object #0 could not be opened!";
-		return false;
-	}
+	while (true) {
+		itemIds = sourceObject->getChildren();
+		if (itemIds.size() <= 0) {
+			qDebug() << "No item objects";
+			break;
+		}
 
-	itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
-	ULONG dataTypes;
-	itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
+		// open the item object
+		std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get())); // we always choose the one at pos 0
+		if (!itemObject) {
+			qDebug() << "Item object #0 could not be opened!";
+			return false;
+		}
 
-	if (dataTypes & kNkMAIDDataObjType_Image) {
-		std::unique_ptr<MaidObject> dataObject(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
+		itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
+		ULONG dataTypes;
+		itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
+
+		std::unique_ptr<MaidObject> dataObject;
+
+		if (dataTypes & kNkMAIDDataObjType_Image) {
+			dataObject.reset(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
+		} else if (dataTypes & kNkMAIDDataObjType_File) {
+			dataObject.reset(MaidObject::create(kNkMAIDDataObjType_File, itemObject.get()));
+		} else {
+			break;
+		}
+
 		if (!dataObject) {
 			qDebug() << "Data object could not be opened!";
 			return false;
@@ -339,13 +400,14 @@ bool MaidFacade::shoot(bool withAf) {
 		DataProcData* ref = new DataProcData();
 		ref->id = dataObject->getID();
 
+		ULONG acquireCount = 0;
 		complData = new CompletionProcData();
 		complData->count = &acquireCount;
 		complData->data = ref;
 
 		//dataObject->capSet(kNkMAIDCapability_DataProc, kNkMAIDDataType_CallbackPtr, (NKPARAM) &stProc);
 		dataObject->setDataCallback((NKREF) ref, dataProc);
-		opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
+		int opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
 		if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
 			qDebug() << "Error acquiring data";
 			return false;
