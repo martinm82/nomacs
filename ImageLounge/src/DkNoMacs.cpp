@@ -3266,8 +3266,12 @@ void DkNoMacs::updateCameraStatus(bool connected) {
 #ifdef NIKON_API
 	if (connected) {
 		cameraActions[menu_camera_connect]->setText(tr("Disconnect"));
+		cameraActions[menu_camera_shoot]->setEnabled(true);
+		cameraActions[menu_camera_shoot_af]->setEnabled(true);
 	} else {
 		cameraActions[menu_camera_connect]->setText(tr("Connect"));
+		cameraActions[menu_camera_shoot]->setEnabled(false);
+		cameraActions[menu_camera_shoot_af]->setEnabled(false);
 	}
 #endif
 }

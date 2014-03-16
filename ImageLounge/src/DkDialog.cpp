@@ -4177,6 +4177,7 @@ void DkCamControls::arrangeLayout(Qt::DockWidgetArea location) {
 void DkCamControls::connectDevice() {
 	if (isConnected) {
 		closeDeviceAndSetState();
+		return;
 	}
 
 	connectDeviceDialog.reset(new ConnectDeviceDialog(maidFacade, this));
@@ -4315,6 +4316,9 @@ void DkCamControls::updateUiValues() {
 	// exposure mode first
 	updateExposureMode();
 	updateExposureModeDependentUiValues();
+
+	shootButton->setEnabled(isConnected);
+	shootAfButton->setEnabled(isConnected);
 }
 
 void DkCamControls::updateExposureModeDependentUiValues() {
@@ -4410,6 +4414,11 @@ void DkCamControls::onExposureModeActivated(int index) {
 }
 
 void DkCamControls::updateAperture() {
+	if (!isConnected) {
+		apertureCombo->setEnabled(false);
+		return;
+	}
+
 	MaidFacade::MaybeStringValues aperture;
 	MaidFacade::MaybeUnsignedValues exposureMode;
 	try {
@@ -4438,11 +4447,16 @@ void DkCamControls::updateAperture() {
 			exposureMode.first.currentValue == kNkMAIDExposureMode_Program) {
 
 		disconnect(apertureCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
-		apertureCombo->setDisabled(true);
+		apertureCombo->setEnabled(false);
 	}
 }
 
 void DkCamControls::updateSensitivity() {
+	if (!isConnected) {
+		isoCombo->setEnabled(false);
+		return;
+	}
+
 	MaidFacade::MaybeStringValues sensitivity;
 	try {
 		sensitivity = maidFacade->readSensitivity();
@@ -4460,11 +4474,16 @@ void DkCamControls::updateSensitivity() {
 		isoCombo->setEnabled(true);
 	} else {
 		disconnect(isoCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
-		isoCombo->setDisabled(true);
+		isoCombo->setEnabled(false);
 	}
 }
 
 void DkCamControls::updateShutterSpeed() {
+	if (!isConnected) {
+		shutterSpeedCombo->setEnabled(false);
+		return;
+	}
+
 	MaidFacade::MaybeStringValues shutterSpeed;
 	MaidFacade::MaybeUnsignedValues exposureMode;
 	try {
@@ -4493,11 +4512,16 @@ void DkCamControls::updateShutterSpeed() {
 			exposureMode.first.currentValue == kNkMAIDExposureMode_Program) {
 
 		disconnect(shutterSpeedCombo, SIGNAL(activated(int)), this, SLOT(onComboActivated(int)));
-		shutterSpeedCombo->setDisabled(true);
+		shutterSpeedCombo->setEnabled(false);
 	}
 }
 
 void DkCamControls::updateExposureMode() {
+	if (!isConnected) {
+		exposureModeCombo->setEnabled(false);
+		return;
+	}
+
 	MaidFacade::MaybeUnsignedValues exposureMode;
 	try {
 		exposureMode = maidFacade->readExposureMode();
@@ -4534,7 +4558,7 @@ void DkCamControls::updateExposureMode() {
 		exposureModeCombo->setEnabled(true);
 	} else {
 		disconnect(exposureModeCombo, SIGNAL(activated(int)), this, SLOT(onExposureModeActivated(int)));
-		exposureModeCombo->setDisabled(true);
+		exposureModeCombo->setEnabled(false);
 	}
 }
 
