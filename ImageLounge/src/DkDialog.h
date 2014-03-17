@@ -995,14 +995,17 @@ public:
 	
 	void capabilityValueChanged(uint32_t capId);
 	void setVisible(bool visible);
+	bool isConnected();
+	bool isLiveViewActive();
 
 signals:
-	void statusChanged(bool connected);
+	void statusChanged();
 
 public slots:
 	void connectDevice();
 	void onShoot();
 	void onShootAf();
+	void onLiveView();
 	void onDeviceOpened();
 	void onOpenDeviceError();
 	void stopActivities();
@@ -1031,7 +1034,8 @@ protected:
 	static const int stateRefreshRate;
 	static const int horizontalItemSpacing;
 	MaidFacade* maidFacade;
-	bool isConnected;
+	bool connected;
+	bool liveViewActive;
 	std::unique_ptr<ConnectDeviceDialog> connectDeviceDialog;
 	std::unique_ptr<OpenDeviceProgressDialog> openDeviceProgressDialog;
 	std::unique_ptr<OpenDeviceThread> openDeviceThread;

@@ -374,6 +374,31 @@ bool MaidFacade::acquireItemObjects(const std::unique_ptr<MaidObject>& itemObjec
 	return true;
 }
 
+/**
+ * throws MaidError
+ */
+bool MaidFacade::toggleLiveView() {
+	int32_t lvStatus = 0;
+
+	if (isLiveViewActive()) {
+		lvStatus = 0;
+	} else {
+		lvStatus = 1;
+	}
+	sourceObject->capSet(kNkMAIDCapability_LiveViewStatus, kNkMAIDDataType_Unsigned, (NKPARAM) lvStatus);
+
+	return true;
+}
+
+/**
+ * throws MaidError
+ */
+bool MaidFacade::isLiveViewActive() {
+	int32_t lvStatus = 0;
+	sourceObject->capGet(kNkMAIDCapability_LiveViewStatus, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &lvStatus);
+	return lvStatus == 1;
+}
+
 std::pair<QStringList, size_t> MaidFacade::toQStringList(const StringValues& values) {
 	QStringList list;
 	for (auto& s : values.values) {

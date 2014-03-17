@@ -345,6 +345,7 @@ enum cameraActions {
 	menu_camera_connect,
 	menu_camera_shoot,
 	menu_camera_shoot_af,
+	menu_camera_liveview,
 
 	menu_camera_end
 };
@@ -543,7 +544,7 @@ public slots:
 	void clearFolderHistory();
 	//void shareFacebook();
 	void showCamControls(bool show);
-	void updateCameraStatus(bool connected);
+	void updateCameraStatus();
 
 	// batch actions
 	void computeThumbsBatch();

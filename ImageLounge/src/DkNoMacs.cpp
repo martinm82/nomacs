@@ -147,7 +147,7 @@ void DkNoMacs::init() {
 	maidFacade = new MaidFacade();
 	maidFacade->init();
 	showCamControls(false);
-	connect(camControls, SIGNAL(statusChanged(bool)), this, SLOT(updateCameraStatus(bool)));
+	connect(camControls, SIGNAL(statusChanged()), this, SLOT(updateCameraStatus()));
 #endif
 
 	// shortcuts and actions
@@ -659,6 +659,7 @@ void DkNoMacs::createMenu() {
 	cameraMenu->addAction(cameraActions[menu_camera_connect]);
 	cameraMenu->addAction(cameraActions[menu_camera_shoot]);
 	cameraMenu->addAction(cameraActions[menu_camera_shoot_af]);
+	cameraMenu->addAction(cameraActions[menu_camera_liveview]);
 #endif
 
 	// no sync menu in frameless view
@@ -1190,6 +1191,10 @@ void DkNoMacs::createActions() {
 	cameraActions[menu_camera_shoot_af] = new QAction(tr("Shoot with AF"), this);
 	cameraActions[menu_camera_shoot_af]->setEnabled(false);
 	connect(cameraActions[menu_camera_shoot_af], SIGNAL(triggered()), camControls, SLOT(onShootAf()));
+
+	cameraActions[menu_camera_liveview] = new QAction(tr("Start Live View"), this);
+	cameraActions[menu_camera_liveview]->setEnabled(false);
+	connect(cameraActions[menu_camera_liveview], SIGNAL(triggered()), camControls, SLOT(onLiveView()));
 #endif
 
 	// help menu
@@ -3262,16 +3267,22 @@ void DkNoMacs::showCamControls(bool show) {
 #endif
 }
 
-void DkNoMacs::updateCameraStatus(bool connected) {
+void DkNoMacs::updateCameraStatus() {
 #ifdef NIKON_API
+	bool connected = camControls->isConnected();
 	if (connected) {
 		cameraActions[menu_camera_connect]->setText(tr("Disconnect"));
-		cameraActions[menu_camera_shoot]->setEnabled(true);
-		cameraActions[menu_camera_shoot_af]->setEnabled(true);
 	} else {
 		cameraActions[menu_camera_connect]->setText(tr("Connect"));
-		cameraActions[menu_camera_shoot]->setEnabled(false);
-		cameraActions[menu_camera_shoot_af]->setEnabled(false);
+	}
+
+	cameraActions[menu_camera_shoot]->setEnabled(connected);
+	cameraActions[menu_camera_shoot_af]->setEnabled(connected);
+	cameraActions[menu_camera_liveview]->setEnabled(connected);
+	if (camControls->isLiveViewActive()) {
+		cameraActions[menu_camera_liveview]->setText(tr("Stop Live View"));
+	} else {
+		cameraActions[menu_camera_liveview]->setText(tr("Start Live View"));
 	}
 #endif
 }

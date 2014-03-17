@@ -4074,7 +4074,7 @@ const int DkCamControls::horizontalItemSpacing = 10;
 
 #ifdef NIKON_API
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
-	: QDockWidget(title, parent, flags), maidFacade(maidFacade), isConnected(false), mainLayout(nullptr) {
+	: QDockWidget(title, parent, flags), maidFacade(maidFacade), connected(false), mainLayout(nullptr) {
 
 	setObjectName("DkCamControls");
 	createLayout();
@@ -4175,7 +4175,7 @@ void DkCamControls::arrangeLayout(Qt::DockWidgetArea location) {
 }
 
 void DkCamControls::connectDevice() {
-	if (isConnected) {
+	if (connected) {
 		closeDeviceAndSetState();
 		return;
 	}
@@ -4237,21 +4237,31 @@ void DkCamControls::onOpenDeviceError() {
 	//qDebug() << tr("The source could not be opened");
 }
 
-void DkCamControls::setConnected(bool connected) {
-	if (connected) {
-		isConnected = true;
-		emit statusChanged(true);
-	} else {
-		isConnected = false;
-		emit statusChanged(false);
-	}
+void DkCamControls::setConnected(bool newValue) {
+	connected = newValue;
+	emit statusChanged();
+}
+
+bool DkCamControls::isConnected() {
+	return connected;
+}
+
+bool DkCamControls::isLiveViewActive() {
+	return liveViewActive;
 }
 
 void DkCamControls::stateUpdate() {
 	auto prevDeviceIds = deviceIds;
 	deviceIds = maidFacade->listDevices();
 
-	if (isConnected && connectedDeviceId.second) {
+	if (connected && connectedDeviceId.second) {
+		// update live view status
+		if (maidFacade->isLiveViewActive() != liveViewActive) {
+			liveViewActive = maidFacade->isLiveViewActive();
+			emit statusChanged();
+		}
+
+		// device disconnected?
 		if (deviceIds.find(connectedDeviceId.first) != deviceIds.end() && !maidFacade->isSourceAlive()) {
 			closeDeviceAndSetState();
 		}
@@ -4260,7 +4270,7 @@ void DkCamControls::stateUpdate() {
 	if (deviceIds.size() != prevDeviceIds.size() || 
 		!std::equal(deviceIds.begin(), deviceIds.end(), prevDeviceIds.begin())) {
 
-		if (isConnected && connectedDeviceId.second) {
+		if (connected && connectedDeviceId.second) {
 			if (deviceIds.find(connectedDeviceId.first) == deviceIds.end()) {
 				closeDeviceAndSetState();
 			}
@@ -4305,7 +4315,7 @@ void DkCamControls::setVisible(bool visible) {
 }
 
 void DkCamControls::updateLensAttachedLabel(bool attached) {
-	if (attached || !isConnected) {
+	if (attached || !connected) {
 		lensAttachedLabel->setText(tr(""));
 	} else {
 		lensAttachedLabel->setText(tr("No lens attached"));
@@ -4317,8 +4327,8 @@ void DkCamControls::updateUiValues() {
 	updateExposureMode();
 	updateExposureModeDependentUiValues();
 
-	shootButton->setEnabled(isConnected);
-	shootAfButton->setEnabled(isConnected);
+	shootButton->setEnabled(connected);
+	shootAfButton->setEnabled(connected);
 }
 
 void DkCamControls::updateExposureModeDependentUiValues() {
@@ -4414,7 +4424,7 @@ void DkCamControls::onExposureModeActivated(int index) {
 }
 
 void DkCamControls::updateAperture() {
-	if (!isConnected) {
+	if (!connected) {
 		apertureCombo->setEnabled(false);
 		return;
 	}
@@ -4452,7 +4462,7 @@ void DkCamControls::updateAperture() {
 }
 
 void DkCamControls::updateSensitivity() {
-	if (!isConnected) {
+	if (!connected) {
 		isoCombo->setEnabled(false);
 		return;
 	}
@@ -4479,7 +4489,7 @@ void DkCamControls::updateSensitivity() {
 }
 
 void DkCamControls::updateShutterSpeed() {
-	if (!isConnected) {
+	if (!connected) {
 		shutterSpeedCombo->setEnabled(false);
 		return;
 	}
@@ -4517,7 +4527,7 @@ void DkCamControls::updateShutterSpeed() {
 }
 
 void DkCamControls::updateExposureMode() {
-	if (!isConnected) {
+	if (!connected) {
 		exposureModeCombo->setEnabled(false);
 		return;
 	}
@@ -4583,6 +4593,20 @@ void DkCamControls::onShootAf() {
 		QMessageBox dialog(this);
 		dialog.setIcon(QMessageBox::Warning);
 		dialog.setText(tr("Could not capture image with AF"));
+		dialog.show();
+		dialog.exec();
+
+		//qDebug() << tr("Could not capture image with AF");
+	}
+}
+
+void DkCamControls::onLiveView() {
+	try {
+		maidFacade->toggleLiveView();
+	} catch (Maid::MaidError e) {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("Could start/stop live view"));
 		dialog.show();
 		dialog.exec();
 

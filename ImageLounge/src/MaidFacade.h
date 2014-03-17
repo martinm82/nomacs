@@ -5,6 +5,7 @@
 #include <set>
 #include <vector>
 #include <functional>
+#include <QObject>
 #include <QMutex>
 #include <QStringList>
 #include "MaidObject.h"
@@ -17,6 +18,7 @@ void CALLPASCAL CALLBACK completionProc(LPNkMAIDObject pObject, ULONG ulCommand,
 namespace nmc {
 
 class MaidFacade {
+
 public:
 	struct StringValues {
 		std::vector<std::string> values;
@@ -47,9 +49,9 @@ public:
 	typedef std::pair<MaidFacade::UnsignedValues, bool> MaybeUnsignedValues;
 
 	MaidFacade();
-	~MaidFacade() {}
+	virtual ~MaidFacade() {}
 
-	// callbacks are public because they have to be called from a function outside the class
+	// some callbacks are public because they have to be called from a function outside the class
 	std::function<void(unsigned long)> capValueChangeCallback;
 
 	void init();
@@ -76,6 +78,8 @@ public:
 	bool isLensAttached();
 	bool shoot(bool withAf = false);
 	bool acquireItemObjects(const std::unique_ptr<Maid::MaidObject>& sourceObject);
+	bool toggleLiveView();
+	bool isLiveViewActive();
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 
 private:
