@@ -80,6 +80,7 @@ public:
 	bool acquireItemObjects(const std::unique_ptr<Maid::MaidObject>& sourceObject);
 	bool toggleLiveView();
 	bool isLiveViewActive();
+	bool getLiveViewImage();
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 
 private:

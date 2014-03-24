@@ -262,6 +262,10 @@ void MaidFacade::closeModule() {
 	
 void MaidFacade::closeSource() {
 	if (sourceObject) {
+		if (isLiveViewActive()) {
+			toggleLiveView();
+		}
+
 		sourceObject->closeObject();
 	}
 	sourceObject.reset();
@@ -374,9 +378,6 @@ bool MaidFacade::acquireItemObjects(const std::unique_ptr<MaidObject>& itemObjec
 	return true;
 }
 
-/**
- * throws MaidError
- */
 bool MaidFacade::toggleLiveView() {
 	int32_t lvStatus = 0;
 
@@ -385,7 +386,16 @@ bool MaidFacade::toggleLiveView() {
 	} else {
 		lvStatus = 1;
 	}
-	sourceObject->capSet(kNkMAIDCapability_LiveViewStatus, kNkMAIDDataType_Unsigned, (NKPARAM) lvStatus);
+
+	try {
+		sourceObject->capSet(kNkMAIDCapability_LiveViewStatus, kNkMAIDDataType_Unsigned, (NKPARAM) lvStatus);
+
+		if (isLiveViewActive()) {
+			getLiveViewImage();
+		}
+	} catch (Maid::MaidError) {
+		return false;
+	}
 
 	return true;
 }
@@ -397,6 +407,59 @@ bool MaidFacade::isLiveViewActive() {
 	int32_t lvStatus = 0;
 	sourceObject->capGet(kNkMAIDCapability_LiveViewStatus, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &lvStatus);
 	return lvStatus == 1;
+}
+
+/**
+ * throws MaidError
+ */
+bool MaidFacade::getLiveViewImage() {
+	std::ofstream imageFile("live.jpg", std::ios::out | std::ios::binary);
+	unsigned int headerSize = 0;
+	NkMAIDArray dataArray;
+	dataArray.pData = nullptr;
+	int i = 0;
+	unsigned char* data = nullptr;
+	bool r = true;
+
+	headerSize = 384;
+
+	memset(&dataArray, 0, sizeof(NkMAIDArray));
+
+	// check if everything is supported
+
+	NkMAIDCapInfo capInfo;
+	r = sourceObject->getCapInfo(kNkMAIDCapability_GetLiveViewImage, &capInfo);
+	if (!r) {
+		return false;
+	}
+
+	r = sourceObject->hasCapOperation(kNkMAIDCapability_GetLiveViewImage, kNkMAIDCapOperation_Get);
+	r = r && sourceObject->hasCapOperation(kNkMAIDCapability_GetLiveViewImage, kNkMAIDCapOperation_GetArray);
+	if (!r) {
+		return false;
+	}
+
+	try {
+		// get info about image, allocate memory
+		sourceObject->capGet(kNkMAIDCapability_GetLiveViewImage, kNkMAIDDataType_ArrayPtr, (NKPARAM) &dataArray);
+		dataArray.pData = malloc(dataArray.ulElements * dataArray.wPhysicalBytes);
+
+		// get data
+		sourceObject->capGetArray(kNkMAIDCapability_GetLiveViewImage, kNkMAIDDataType_ArrayPtr, (NKPARAM) &dataArray);
+	} catch (Maid::MaidError) {
+		if (dataArray.pData) {
+			delete[] dataArray.pData;
+		}
+		return false;
+	}
+
+	data = (unsigned char*) dataArray.pData;
+	imageFile.write(((char*) data) + headerSize, dataArray.ulElements - headerSize);
+
+	imageFile.close();
+	delete[] dataArray.pData;
+
+	return true;
 }
 
 std::pair<QStringList, size_t> MaidFacade::toQStringList(const StringValues& values) {
