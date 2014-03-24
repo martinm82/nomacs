@@ -3259,7 +3259,7 @@ void DkNoMacs::showCamControls(bool show) {
 		QSettings settings;
 		int dockLocation = settings.value("camControlsLocation", Qt::RightDockWidgetArea).toInt();
 		
-		camControls = new DkCamControls(maidFacade, tr("Camera Controls"));
+		camControls = new DkCamControls(maidFacade, tr("Camera Controls"), viewport());
 		addDockWidget((Qt::DockWidgetArea)dockLocation, camControls);
 	}
 

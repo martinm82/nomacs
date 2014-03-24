@@ -4070,11 +4070,12 @@ void DkForceThumbDialog::setDir(const QDir& fileInfo) {
 // >NIKON: dummy class  [23.1.2014 markus]
 
 const int DkCamControls::stateRefreshRate = 1000; // in ms
+const int DkCamControls::liveViewImageRate = 1000;
 const int DkCamControls::horizontalItemSpacing = 10;
 
 #ifdef NIKON_API
-DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
-	: QDockWidget(title, parent, flags), maidFacade(maidFacade), connected(false), mainLayout(nullptr) {
+DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, DkViewPort* viewport, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
+	: QDockWidget(title, parent, flags), maidFacade(maidFacade), connected(false), mainLayout(nullptr), viewport(viewport) {
 
 	setObjectName("DkCamControls");
 	createLayout();
@@ -4083,7 +4084,10 @@ DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, QWidg
 	maidFacade->setCapValueChangeCallback([&] (uint32_t cap) { capabilityValueChanged(cap); });
 
 	stateUpdateTimer.reset(new QTimer(this));
-	connect(stateUpdateTimer.get(), SIGNAL(timeout()), this, SLOT(stateUpdate())); 
+	connect(stateUpdateTimer.get(), SIGNAL(timeout()), this, SLOT(stateUpdate()));
+
+	liveViewTimer.reset(new QTimer(this));
+	connect(liveViewTimer.get(), SIGNAL(timeout()), this, SLOT(updateLiveViewImage()));
 
 	//readSettings();
 }
@@ -4258,6 +4262,13 @@ void DkCamControls::stateUpdate() {
 		// update live view status
 		if (maidFacade->isLiveViewActive() != liveViewActive) {
 			liveViewActive = maidFacade->isLiveViewActive();
+			// start or stop transmitting and displaying images
+			if (liveViewActive) {
+				liveViewTimer->start(liveViewImageRate);
+			} else {
+				liveViewTimer->stop();
+			}
+
 			emit statusChanged();
 		}
 
@@ -4280,6 +4291,17 @@ void DkCamControls::stateUpdate() {
 	// update gui list
 	if (connectDeviceDialog) {
 		connectDeviceDialog->updateDevicesList(deviceIds);
+	}
+}
+
+void DkCamControls::updateLiveViewImage() {
+	if (maidFacade->getLiveViewImage()) {
+		DkBasicLoader loader;
+		if (loader.loadGeneral(QFileInfo("live.jpg"))) {
+			viewport->setImage(loader.image());
+		} else {
+			viewport->setImage(QImage());
+		}
 	}
 }
 

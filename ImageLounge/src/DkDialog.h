@@ -990,7 +990,7 @@ class DkCamControls : public QDockWidget {
 	Q_OBJECT
 
 public:
-	DkCamControls(MaidFacade* maidFacade, const QString& title, QWidget* parent = 0, Qt::WindowFlags flags = 0);
+	DkCamControls(MaidFacade* maidFacade, const QString& title, DkViewPort* viewport, QWidget* parent = 0, Qt::WindowFlags flags = 0);
 	~DkCamControls();
 	
 	void capabilityValueChanged(uint32_t capId);
@@ -1012,6 +1012,7 @@ public slots:
 
 protected slots:
 	void stateUpdate();
+	void updateLiveViewImage();
 	void onComboActivated(int);
 	void onExposureModeActivated(int index);
 	void arrangeLayout(Qt::DockWidgetArea location = Qt::DockWidgetArea::NoDockWidgetArea);
@@ -1032,6 +1033,7 @@ protected:
 	void closeDeviceAndSetState();
 
 	static const int stateRefreshRate;
+	static const int liveViewImageRate;
 	static const int horizontalItemSpacing;
 	MaidFacade* maidFacade;
 	bool connected;
@@ -1040,8 +1042,11 @@ protected:
 	std::unique_ptr<OpenDeviceProgressDialog> openDeviceProgressDialog;
 	std::unique_ptr<OpenDeviceThread> openDeviceThread;
 	std::unique_ptr<QTimer> stateUpdateTimer;
+	std::unique_ptr<QTimer> liveViewTimer;
 	std::set<uint32_t> deviceIds;
 	std::pair<uint32_t, bool> connectedDeviceId;
+
+	DkViewPort* viewport;
 
 	QWidget* widget;
 	QBoxLayout* mainLayout;
