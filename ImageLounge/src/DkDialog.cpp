@@ -4595,22 +4595,16 @@ void DkCamControls::updateExposureMode() {
 }
 
 void DkCamControls::onShoot() {
-	try {
-		maidFacade->shoot();
-	} catch (Maid::MaidError e) {
-		QMessageBox dialog(this);
-		dialog.setIcon(QMessageBox::Warning);
-		dialog.setText(tr("Could not capture image"));
-		dialog.show();
-		dialog.exec();
-
-		//qDebug() << tr("Could not capture image");
-	}
+	shoot(false);
 }
 
 void DkCamControls::onShootAf() {
+	shoot(true);
+}
+
+void DkCamControls::shoot(bool withAf) {
 	try {
-		maidFacade->shoot(true);
+		maidFacade->shoot(withAf);
 	} catch (Maid::MaidError e) {
 		QMessageBox dialog(this);
 		dialog.setIcon(QMessageBox::Warning);
@@ -4620,6 +4614,8 @@ void DkCamControls::onShootAf() {
 
 		//qDebug() << tr("Could not capture image with AF");
 	}
+
+	// TODO load image into viewport
 }
 
 void DkCamControls::onLiveView() {

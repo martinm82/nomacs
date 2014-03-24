@@ -1031,6 +1031,7 @@ protected:
 	void updateExposureMode();
 	void setConnected(bool connected);
 	void closeDeviceAndSetState();
+	void shoot(bool withAf = false);
 
 	static const int stateRefreshRate;
 	static const int liveViewImageRate;
