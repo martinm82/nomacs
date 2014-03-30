@@ -258,9 +258,10 @@ bool MaidObject::closeObject() {
 	}
 
 	for (auto child : children) {
-		removeChild(child);
+		child->setParent(nullptr);
 		child->closeObject();
 	}
+	children.clear();
 
 	int ret = MaidUtil::getInstance().callMAIDEntryPoint(obj, kNkMAIDCommand_Close, 0, 0, 0, NULL, NULL);
 
