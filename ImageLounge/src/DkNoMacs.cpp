@@ -144,7 +144,7 @@ void DkNoMacs::init() {
 
 	// camera stuff
 #ifdef NIKON_API
-	maidFacade = new MaidFacade();
+	maidFacade = new MaidFacade(this);
 	maidFacade->init();
 	showCamControls(false);
 	connect(camControls, SIGNAL(statusChanged()), this, SLOT(updateCameraStatus()));
@@ -2461,6 +2461,60 @@ void DkNoMacs::saveFileAs(bool silent) {
 	if (loader)
 		loader->saveFile(sFile, selectedFilter, saveImg, compression);
 
+}
+
+QString DkNoMacs::getCapturedFileName(const QFileInfo& saveFile) {
+	qDebug() << "saving captured image...";
+
+	DkImageLoader* loader = viewport()->getImageLoader();
+
+	QString selectedFilter;
+	QString saveName;
+	saveName = saveFile.fileName();
+
+	int filterIdx = -1;
+
+	QStringList sF = DkImageLoader::saveFilters;
+	//qDebug() << sF;
+
+	QRegExp exp = QRegExp("*." + saveFile.suffix() + "*", Qt::CaseInsensitive);
+	exp.setPatternSyntax(QRegExp::Wildcard);
+
+	for (int idx = 0; idx < sF.size(); idx++) {
+		if (exp.exactMatch(sF.at(idx))) {
+			selectedFilter = sF.at(idx);
+			filterIdx = idx;
+			break;
+		}
+	}
+
+	if (filterIdx == -1)
+		saveName.remove("." + saveFile.suffix());
+
+	QString fileName;
+
+	int answer = QDialog::Rejected;
+
+	if (!selectedFilter.isEmpty() && viewport()->getImageLoader()->isEdited()) {
+		fileName = loader->getFile().absoluteFilePath();
+		DkMessageBox* msg = new DkMessageBox(QMessageBox::Question, tr("Overwrite File"), 
+			tr("Do you want to overwrite:\n%1?").arg(fileName), 
+			(QMessageBox::Yes | QMessageBox::No), this);
+		msg->setObjectName("overwriteDialog");
+
+		//msg->show();
+		answer = msg->exec();
+
+	}
+	if (answer == QDialog::Rejected || answer == QMessageBox::No) {
+		// note: basename removes the whole file name from the first dot...
+		QString savePath = (!selectedFilter.isEmpty()) ? saveFile.absoluteFilePath() : QFileInfo(saveFile.absoluteDir(), saveName).absoluteFilePath();
+
+		fileName = QFileDialog::getSaveFileName(this, tr("Save File %1").arg(saveName),
+			savePath, selectedFilter, &selectedFilter);
+	}
+
+	return fileName;
 }
 
 void DkNoMacs::resizeImage() {

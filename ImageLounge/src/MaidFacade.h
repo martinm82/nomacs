@@ -7,15 +7,18 @@
 #include <functional>
 #include <QObject>
 #include <QMutex>
+#include <QString>
+#include <QFileInfo>
 #include <QStringList>
 #include "MaidObject.h"
 
-std::string makePictureFilename(NkMAIDDataInfo* dataInfo, NkMAIDFileInfo* fileInfo = nullptr);
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG ulEvent, NKPARAM data);
 NKERROR CALLPASCAL CALLBACK dataProc(NKREF ref, LPVOID info, LPVOID data);
 void CALLPASCAL CALLBACK completionProc(LPNkMAIDObject pObject, ULONG ulCommand, ULONG ulParam, ULONG ulDataType, NKPARAM data, NKREF refComplete, NKERROR nResult);
 
 namespace nmc {
+
+class DkNoMacs;
 
 class MaidFacade {
 
@@ -36,6 +39,7 @@ public:
 		size_t offset;
 		size_t totalLines;
 		long id;
+		MaidFacade* maidFacade;
 	};
 
 	struct CompletionProcData {
@@ -48,7 +52,7 @@ public:
 	typedef std::pair<MaidFacade::StringValues, bool> MaybeStringValues;
 	typedef std::pair<MaidFacade::UnsignedValues, bool> MaybeUnsignedValues;
 
-	MaidFacade();
+	MaidFacade(nmc::DkNoMacs* noMacs);
 	virtual ~MaidFacade() {}
 
 	// some callbacks are public because they have to be called from a function outside the class
@@ -82,8 +86,10 @@ public:
 	bool isLiveViewActive();
 	bool getLiveViewImage();
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
+	NKERROR processMaidData(NKREF ref, LPVOID info, LPVOID data);
 
 private:
+	DkNoMacs* noMacs;
 	std::unique_ptr<Maid::MaidObject> moduleObject;
 	std::unique_ptr<Maid::MaidObject> sourceObject;
 	MaybeStringValues aperture;
@@ -92,6 +98,8 @@ private:
 	MaybeUnsignedValues exposureMode;
 	QMutex mutex;
 	bool lensAttached;
+	QString prevFilename;
+	unsigned int prevFileNumber;
 	
 	//void closeChildren(std::unique_ptr<Maid::MaidObject> mo);
 	MaybeStringValues readPackedStringCap(ULONG capId);
@@ -100,6 +108,8 @@ private:
 	void sourceIdleLoop(ULONG* count);
 	bool setMaybeStringEnumValue(std::pair<StringValues, bool>& theMaybeValue, ULONG capId, size_t newValue);
 	bool setMaybeUnsignedEnumValue(std::pair<UnsignedValues, bool>& theMaybeValue, ULONG capId, size_t newValue);
+	std::string makePictureFilename(NkMAIDDataInfo* dataInfo, NkMAIDFileInfo* fileInfo = nullptr);
+	QString increaseFilenameNumber(const QFileInfo& fileInfo);
 };
 
 };

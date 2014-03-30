@@ -7,12 +7,13 @@
 #include "MaidFacade.h"
 #include "MaidUtil.h"
 #include "MaidError.h"
+#include "DkNoMacs.h"
 
 using nmc::MaidFacade;
 using Maid::MaidUtil;
 using Maid::MaidObject;
 
-MaidFacade::MaidFacade() : lensAttached(false) {
+MaidFacade::MaidFacade(nmc::DkNoMacs* noMacs) : noMacs(noMacs), lensAttached(false), prevFileNumber(0) {
 }
 
 /*!
@@ -356,6 +357,7 @@ bool MaidFacade::acquireItemObjects(const std::unique_ptr<MaidObject>& itemObjec
 
 		DataProcData* ref = new DataProcData();
 		ref->id = dataObject->getID();
+		ref->maidFacade = this;
 
 		ULONG acquireCount = 0;
 		complData = new CompletionProcData();
@@ -470,6 +472,145 @@ std::pair<QStringList, size_t> MaidFacade::toQStringList(const StringValues& val
 	return std::make_pair(list, values.currentValue);
 }
 
+NKERROR MaidFacade::processMaidData(NKREF ref, LPVOID info, LPVOID data) {
+	NkMAIDDataInfo* dataInfo = static_cast<NkMAIDDataInfo*>(info);
+	NkMAIDFileInfo* fileInfo = static_cast<NkMAIDFileInfo*>(info);
+	NkMAIDImageInfo* imageInfo = static_cast<NkMAIDImageInfo*>(info);
+	auto* r = static_cast<MaidFacade::DataProcData*>(ref);
+	
+	if (dataInfo->ulType & kNkMAIDDataObjType_File) {
+		// initialize buffer
+		if (r->offset == 0 && r->buffer == nullptr) {
+			r->buffer = new char[fileInfo->ulTotalLength];
+		}
+
+		memcpy(r->buffer + r->offset, data, fileInfo->ulLength);
+		r->offset += fileInfo->ulLength;
+
+		if (r->offset >= fileInfo->ulTotalLength) {
+			// file delivery is finished, write to disk
+
+			QString filename;
+			if (prevFilename.isEmpty()) {
+				std::string tempFilename = makePictureFilename(dataInfo, fileInfo);
+				filename = noMacs->getCapturedFileName(QFileInfo(QString::fromStdString(tempFilename)));
+				if (filename.isEmpty()) {
+					return kNkMAIDResult_NoError;
+				}
+				prevFilename = filename;
+			} else {
+				filename = increaseFilenameNumber(QFileInfo(prevFilename));
+			}
+			qDebug() << "saving file: " << filename;
+
+			std::ofstream outFile;
+
+			outFile.open(filename.toStdString(), std::ios::out | std::ios::binary);
+			if (!outFile.good() || !outFile.is_open()) {
+				return kNkMAIDResult_UnexpectedError;
+			}
+
+			outFile.write(r->buffer, fileInfo->ulTotalLength);
+			delete[] r->buffer;
+			r->buffer = nullptr;
+			r->offset = 0;
+			outFile.close();
+		}
+	} else { // image
+		return kNkMAIDResult_UnexpectedError;
+
+		//unsigned long totalSize = imageInfo->ulRowBytes * imageInfo->szTotalPixels.h;
+		//if (r->offset == 0 && r->buffer == nullptr) {
+		//	r->buffer = new char[totalSize];
+		//}
+		//unsigned long byte = imageInfo->ulRowBytes * imageInfo->rData.h;
+		//memcpy(r->buffer + r->offset, data, byte);
+		//r->offset += byte;
+
+		//if (r->offset >= totalSize) {
+		//	std::string filename = makePictureFilename(dataInfo, nullptr);
+		//	std::ofstream outFile;
+
+		//	outFile.open(filename, std::ios::out | std::ios::binary);
+		//	if (!outFile.good() || !outFile.is_open()) {
+		//		return kNkMAIDResult_UnexpectedError;
+		//	}
+
+		//	outFile.write(r->buffer, totalSize);
+		//	delete[] r->buffer;
+		//	r->buffer = nullptr;
+		//	r->offset = 0;
+		//	outFile.close();
+		//}
+	}
+
+	return kNkMAIDResult_NoError;
+}
+
+/*!
+ * If fileInfo is nullptr, it is assumed that it is a raw picture
+ */
+std::string MaidFacade::makePictureFilename(NkMAIDDataInfo* dataInfo, NkMAIDFileInfo* fileInfo) {
+	std::string prefix;
+	std::string ext;
+
+	if (dataInfo->ulType & kNkMAIDDataObjType_Image) {
+		prefix = "Image";
+	} else if (dataInfo->ulType & kNkMAIDDataObjType_Thumbnail) {
+		prefix = "Thumb";
+	} else {
+		prefix = "Unknown";
+	}
+
+	if (fileInfo == nullptr) {
+		ext = "raw";
+	} else {
+		switch (fileInfo->ulFileDataType) {
+		case kNkMAIDFileDataType_JPEG:
+			ext = "jpg";
+			break;
+		case kNkMAIDFileDataType_TIFF:
+			ext = "tif";
+			break;
+		case kNkMAIDFileDataType_NIF:
+			ext = "nef";
+			break;
+		//case kNkMAIDFileDataType_NDF:
+		//	ext = "ndf";
+		//	break;
+		default:
+			ext = "dat";
+		}
+	}
+
+	std::stringstream filenameStream;
+	filenameStream << prefix << "." << ext;
+
+	return filenameStream.str();
+}
+
+/**
+ * For image0.jpg, this will return image1.jpg, etc.
+ */
+QString MaidFacade::increaseFilenameNumber(const QFileInfo& fileInfo) {
+	std::ifstream testFileIn;
+	QString basePath = fileInfo.filePath().remove("." + fileInfo.completeSuffix());
+	QString filename = "";
+	// test file names
+	while (true) {
+		filename = basePath + "_" + QString::number(++prevFileNumber) + "." + fileInfo.completeSuffix();
+		testFileIn.open(filename.toStdString());
+		if (!testFileIn.good()) {
+			testFileIn.close();
+			break;
+		}
+
+		testFileIn.close();
+	}
+
+	return filename;
+}
+
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 	MaidFacade* maidFacade = (MaidFacade*) ref;
 
@@ -502,121 +643,8 @@ void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 	}
 }
 
-/*!
- * If fileInfo is nullptr, it is assumed that it is a raw picture
- */
-std::string makePictureFilename(NkMAIDDataInfo* dataInfo, NkMAIDFileInfo* fileInfo) {
-	std::string prefix;
-	std::string ext;
-
-	if (dataInfo->ulType & kNkMAIDDataObjType_Image) {
-		prefix = "Image";
-	} else if (dataInfo->ulType & kNkMAIDDataObjType_Thumbnail) {
-		prefix = "Thumb";
-	} else {
-		prefix = "Unknown";
-	}
-
-	if (fileInfo == nullptr) {
-		ext = "raw";
-	} else {
-		switch (fileInfo->ulFileDataType) {
-		case kNkMAIDFileDataType_JPEG:
-			ext = "jpg";
-			break;
-		case kNkMAIDFileDataType_TIFF:
-			ext = "tif";
-			break;
-		case kNkMAIDFileDataType_NIF:
-			ext = "nef";
-			break;
-		case kNkMAIDFileDataType_NDF:
-			ext = "ndf";
-			break;
-		default:
-			ext = "dat";
-		}
-	}
-
-	std::stringstream filenameStream;
-	std::ifstream testFileIn;
-	unsigned int i = 0;
-	// test file names
-	while (true) {
-		filenameStream.str("");
-		filenameStream << prefix << i << "." << ext;
-		testFileIn.open(filenameStream.str());
-		if (!testFileIn.good()) {
-			testFileIn.close();
-			break;
-		}
-
-		testFileIn.close();
-		++i;
-	}
-
-	return filenameStream.str();
-}
-
 NKERROR CALLPASCAL CALLBACK dataProc(NKREF ref, LPVOID info, LPVOID data) {
-	NkMAIDDataInfo* dataInfo = static_cast<NkMAIDDataInfo*>(info);
-	NkMAIDFileInfo* fileInfo = static_cast<NkMAIDFileInfo*>(info);
-	NkMAIDImageInfo* imageInfo = static_cast<NkMAIDImageInfo*>(info);
-	auto r = static_cast<MaidFacade::DataProcData*>(ref);
-	
-	if (dataInfo->ulType & kNkMAIDDataObjType_File) {
-		// initialize buffer
-		if (r->offset == 0 && r->buffer == nullptr) {
-			r->buffer = new char[fileInfo->ulTotalLength];
-		}
-
-		memcpy(r->buffer + r->offset, data, fileInfo->ulLength);
-		r->offset += fileInfo->ulLength;
-
-		if (r->offset >= fileInfo->ulTotalLength) {
-			// file delivery is finished, write to disk
-
-			std::string filename = makePictureFilename(dataInfo, fileInfo);
-			std::ofstream outFile;
-
-			outFile.open(filename, std::ios::out | std::ios::binary);
-			if (!outFile.good() || !outFile.is_open()) {
-				return kNkMAIDResult_UnexpectedError;
-			}
-
-			outFile.write(r->buffer, fileInfo->ulTotalLength);
-			delete[] r->buffer;
-			r->buffer = nullptr;
-			r->offset = 0;
-			outFile.close();
-		}
-	} else { // image
-		unsigned long totalSize = imageInfo->ulRowBytes * imageInfo->szTotalPixels.h;
-		if (r->offset == 0 && r->buffer == nullptr) {
-			r->buffer = new char[totalSize];
-		}
-		unsigned long byte = imageInfo->ulRowBytes * imageInfo->rData.h;
-		memcpy(r->buffer + r->offset, data, byte);
-		r->offset += byte;
-
-		if (r->offset >= totalSize) {
-			std::string filename = makePictureFilename(dataInfo, nullptr);
-			std::ofstream outFile;
-
-			outFile.open(filename, std::ios::out | std::ios::binary);
-			if (!outFile.good() || !outFile.is_open()) {
-				return kNkMAIDResult_UnexpectedError;
-			}
-
-			outFile.write(r->buffer, totalSize);
-			delete[] r->buffer;
-			r->buffer = nullptr;
-			r->offset = 0;
-			outFile.close();
-		}
-	}
-
-	return kNkMAIDResult_NoError;
+	return static_cast<MaidFacade::DataProcData*>(ref)->maidFacade->processMaidData(ref, info, data);
 }
 
 void CALLPASCAL CALLBACK completionProc(

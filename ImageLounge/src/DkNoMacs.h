@@ -456,6 +456,7 @@ public:
 	QVector<QAction* > getCameraActions();
 #endif
 	void loadFile(const QFileInfo& file, bool silent = false);
+	QString getCapturedFileName(const QFileInfo& saveFile);
 
 	static void updateAll();
 

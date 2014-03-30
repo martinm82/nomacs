@@ -1291,6 +1291,10 @@ void DkImageLoader::initFileFilters() {
 	saveFilters.append("WebP (*.webp)");
 #endif
 
+#ifdef NIKON_API
+	saveFilters.append("Nikon (*.nef)");
+#endif
+
 	// formats we can load
 	openFilters += saveFilters;
 	if (qtFormats.contains("gif"))		openFilters.append("Graphic Interchange Format (*.gif)");

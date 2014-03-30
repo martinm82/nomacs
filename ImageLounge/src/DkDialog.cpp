@@ -4612,7 +4612,7 @@ void DkCamControls::shoot(bool withAf) {
 		dialog.show();
 		dialog.exec();
 
-		//qDebug() << tr("Could not capture image with AF");
+		//qDebug() << tr("Could not capture image");
 	}
 
 	// TODO load image into viewport
