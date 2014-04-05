@@ -1395,6 +1395,7 @@ void DkNoMacs::closeEvent(QCloseEvent *event) {
 		DkSettings::save();
 	}
 
+	camControls->stopActivities();
 	maidFacade->closeEverything();
 
 	QMainWindow::closeEvent(event);

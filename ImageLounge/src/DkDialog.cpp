@@ -4070,7 +4070,7 @@ void DkForceThumbDialog::setDir(const QDir& fileInfo) {
 // >NIKON: dummy class  [23.1.2014 markus]
 
 const int DkCamControls::stateRefreshRate = 1000; // in ms
-const int DkCamControls::liveViewImageRate = 1000;
+const int DkCamControls::liveViewImageRate = 100;
 const int DkCamControls::horizontalItemSpacing = 10;
 
 #ifdef NIKON_API
@@ -4259,22 +4259,30 @@ void DkCamControls::stateUpdate() {
 	deviceIds = maidFacade->listDevices();
 
 	if (connected && connectedDeviceId.second) {
-		// update live view status
-		if (maidFacade->isLiveViewActive() != liveViewActive) {
-			liveViewActive = maidFacade->isLiveViewActive();
-			// start or stop transmitting and displaying images
-			if (liveViewActive) {
-				liveViewTimer->start(liveViewImageRate);
-			} else {
-				liveViewTimer->stop();
-			}
-
-			emit statusChanged();
-		}
-
 		// device disconnected?
 		if (deviceIds.find(connectedDeviceId.first) != deviceIds.end() && !maidFacade->isSourceAlive()) {
 			closeDeviceAndSetState();
+		} else {
+			// update live view status
+			bool newLiveViewStatus;
+			try {
+				newLiveViewStatus = maidFacade->isLiveViewActive();
+			} catch (Maid::MaidError) {
+				// reading capability did not work, camera may have been disconnected
+				newLiveViewStatus = false;
+			}
+			if (newLiveViewStatus != liveViewActive) {
+				liveViewActive = newLiveViewStatus;
+
+				// start or stop transmitting and displaying images
+				if (liveViewActive) {
+					liveViewTimer->start(liveViewImageRate);
+				} else {
+					liveViewTimer->stop();
+				}
+
+				emit statusChanged();
+			}
 		}
 	}
 
@@ -4295,13 +4303,13 @@ void DkCamControls::stateUpdate() {
 }
 
 void DkCamControls::updateLiveViewImage() {
-	if (maidFacade->getLiveViewImage()) {
-		DkBasicLoader loader;
-		if (loader.loadGeneral(QFileInfo("live.jpg"))) {
-			viewport->setImage(loader.image());
-		} else {
-			viewport->setImage(QImage());
-		}
+	stateUpdate();
+
+	try {
+		QImage image = maidFacade->getLiveViewImage();
+		viewport->setImage(image);
+	} catch (Maid::MaidError) {
+		// do nothing
 	}
 }
 
@@ -4318,6 +4326,7 @@ void DkCamControls::closeDeviceAndSetState() {
 
 void DkCamControls::stopActivities() {
 	stateUpdateTimer->stop();
+	liveViewTimer->stop();
 }
 
 void DkCamControls::showEvent(QShowEvent *event) {

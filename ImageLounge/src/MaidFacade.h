@@ -84,7 +84,7 @@ public:
 	bool acquireItemObjects(const std::unique_ptr<Maid::MaidObject>& sourceObject);
 	bool toggleLiveView();
 	bool isLiveViewActive();
-	bool getLiveViewImage();
+	QImage getLiveViewImage();
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 	NKERROR processMaidData(NKREF ref, LPVOID info, LPVOID data);
 

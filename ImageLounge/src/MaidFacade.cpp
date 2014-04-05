@@ -263,11 +263,15 @@ void MaidFacade::closeModule() {
 	
 void MaidFacade::closeSource() {
 	if (sourceObject) {
-		if (isLiveViewActive()) {
-			toggleLiveView();
-		}
+		try {
+			if (isLiveViewActive()) {
+				toggleLiveView();
+			}
 
-		sourceObject->closeObject();
+			sourceObject->closeObject();
+		} catch (Maid::MaidError) {
+			// live view not active or object was already closed
+		}
 	}
 	sourceObject.reset();
 }
@@ -414,14 +418,14 @@ bool MaidFacade::isLiveViewActive() {
 /**
  * throws MaidError
  */
-bool MaidFacade::getLiveViewImage() {
-	std::ofstream imageFile("live.jpg", std::ios::out | std::ios::binary);
+QImage MaidFacade::getLiveViewImage() {
 	unsigned int headerSize = 0;
 	NkMAIDArray dataArray;
 	dataArray.pData = nullptr;
 	int i = 0;
 	unsigned char* data = nullptr;
 	bool r = true;
+	QImage empty = QImage();
 
 	headerSize = 384;
 
@@ -432,13 +436,13 @@ bool MaidFacade::getLiveViewImage() {
 	NkMAIDCapInfo capInfo;
 	r = sourceObject->getCapInfo(kNkMAIDCapability_GetLiveViewImage, &capInfo);
 	if (!r) {
-		return false;
+		return empty;
 	}
 
 	r = sourceObject->hasCapOperation(kNkMAIDCapability_GetLiveViewImage, kNkMAIDCapOperation_Get);
 	r = r && sourceObject->hasCapOperation(kNkMAIDCapability_GetLiveViewImage, kNkMAIDCapOperation_GetArray);
 	if (!r) {
-		return false;
+		return empty;
 	}
 
 	try {
@@ -452,16 +456,16 @@ bool MaidFacade::getLiveViewImage() {
 		if (dataArray.pData) {
 			delete[] dataArray.pData;
 		}
-		return false;
+		return empty;
 	}
 
 	data = (unsigned char*) dataArray.pData;
-	imageFile.write(((char*) data) + headerSize, dataArray.ulElements - headerSize);
+	// construct a QImage out of the data
+	QImage image = QImage::fromData(data + headerSize, dataArray.ulElements - headerSize, "JPEG");
 
-	imageFile.close();
 	delete[] dataArray.pData;
 
-	return true;
+	return image;
 }
 
 std::pair<QStringList, size_t> MaidFacade::toQStringList(const StringValues& values) {
