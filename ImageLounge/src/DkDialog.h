@@ -1050,15 +1050,23 @@ protected:
 	DkViewPort* viewport;
 
 	QWidget* widget;
+	QGroupBox* profilesGroup;
+	QGroupBox* mainGroup;
 	QBoxLayout* mainLayout;
 	QBoxLayout* outerLayout;
+	QHBoxLayout* profilesLayout;
 	QLabel* lensAttachedLabel;
+	QComboBox* profilesCombo;
 	QComboBox* exposureModeCombo;
 	QComboBox* isoCombo;
 	QComboBox* apertureCombo;
 	QComboBox* shutterSpeedCombo;
 	QPushButton* shootButton;
 	QPushButton* shootAfButton;
+	QPushButton* newProfileButton;
+	QPushButton* deleteProfileButton;
+	QPushButton* loadProfileButton;
+	QPushButton* saveProfileButton;
 	QHBoxLayout* connectionLayout;
 	QHBoxLayout* exposureModeLayout;
 	QHBoxLayout* apertureLayout;

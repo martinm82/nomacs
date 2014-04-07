@@ -4148,6 +4148,8 @@ void DkCamControls::createLayout() {
 	boxFillerV = new QSpacerItem(20, 20, QSizePolicy::Minimum, QSizePolicy::Expanding);
 	boxFillerH = new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
+	mainGroup = new QGroupBox("Camera options");
+	mainGroup->setFlat(true);
 	mainLayout = new QVBoxLayout();
 	mainLayout->addWidget(exposureModeWidget);
 	mainLayout->addWidget(apertureWidget);
@@ -4155,9 +4157,39 @@ void DkCamControls::createLayout() {
 	mainLayout->addWidget(shutterSpeedWidget);
 	mainLayout->addLayout(buttonsLayout);
 	mainLayout->addLayout(connectionLayout);
+	mainGroup->setLayout(mainLayout);
+
+	// profiles
+
+	profilesCombo = new QComboBox();
+	newProfileButton = new QPushButton();
+	newProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+	newProfileButton->adjustSize();
+	deleteProfileButton = new QPushButton();
+	deleteProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogDiscardButton));
+	deleteProfileButton->adjustSize();
+	loadProfileButton = new QPushButton();
+	loadProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
+	loadProfileButton->adjustSize();
+	saveProfileButton = new QPushButton();
+	saveProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogSaveButton));
+	saveProfileButton->adjustSize();
+
+	profilesGroup = new QGroupBox("Profiles");
+	profilesGroup->setFlat(true);
+	profilesLayout = new QHBoxLayout();
+	profilesLayout->addWidget(profilesCombo);
+	profilesLayout->addWidget(loadProfileButton);
+	profilesLayout->addSpacerItem(new QSpacerItem(10, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
+	profilesLayout->addWidget(saveProfileButton);
+	profilesLayout->addWidget(newProfileButton);
+	profilesLayout->addWidget(deleteProfileButton);
+	profilesLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::Minimum));
+	profilesGroup->setLayout(profilesLayout);
 
 	outerLayout = new QVBoxLayout();
-	outerLayout->addLayout(mainLayout);
+	outerLayout->addWidget(profilesGroup);
+	outerLayout->addWidget(mainGroup);
 	outerLayout->addSpacerItem(boxFillerV);
 
 	widget->setLayout(outerLayout);
@@ -4306,8 +4338,7 @@ void DkCamControls::updateLiveViewImage() {
 	stateUpdate();
 
 	try {
-		QImage image = maidFacade->getLiveViewImage();
-		viewport->setImage(image);
+		viewport->setImage(maidFacade->getLiveViewImage());
 	} catch (Maid::MaidError) {
 		// do nothing
 	}
