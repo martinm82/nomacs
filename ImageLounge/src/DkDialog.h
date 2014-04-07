@@ -1016,8 +1016,20 @@ protected slots:
 	void onComboActivated(int);
 	void onExposureModeActivated(int index);
 	void arrangeLayout(Qt::DockWidgetArea location = Qt::DockWidgetArea::NoDockWidgetArea);
+	void loadProfile();
+	void saveProfile();
+	void deleteProfile();
+	void newProfile();
 
 protected:
+	struct Profile {
+		QString name;
+		int exposureModeIndex;
+		int apertureIndex;
+		int sensitivityIndex;
+		int shutterSpeedIndex;
+	};
+
 	void showEvent(QShowEvent *event);
 	void closeEvent(QCloseEvent *event);
 
@@ -1032,10 +1044,17 @@ protected:
 	void setConnected(bool connected);
 	void closeDeviceAndSetState();
 	void shoot(bool withAf = false);
+	void writeProfiles();
+	void setAperture(const int index, int fallback = -1);
+	void setShutterSpeed(const int index, int fallback = -1);
+	void setSensitivity(const int index, int fallback = -1);
+	void setExposureMode(const int index, int fallback = -1);
+	Profile createProfileFromCurrent(const QString& name);
 
 	static const int stateRefreshRate;
 	static const int liveViewImageRate;
 	static const int horizontalItemSpacing;
+	static const QString profilesFileName;
 	MaidFacade* maidFacade;
 	bool connected;
 	bool liveViewActive;
@@ -1046,6 +1065,7 @@ protected:
 	std::unique_ptr<QTimer> liveViewTimer;
 	std::set<uint32_t> deviceIds;
 	std::pair<uint32_t, bool> connectedDeviceId;
+	QList<Profile> profiles;
 
 	DkViewPort* viewport;
 

@@ -4072,6 +4072,7 @@ void DkForceThumbDialog::setDir(const QDir& fileInfo) {
 const int DkCamControls::stateRefreshRate = 1000; // in ms
 const int DkCamControls::liveViewImageRate = 100;
 const int DkCamControls::horizontalItemSpacing = 10;
+const QString DkCamControls::profilesFileName = "cameraProfiles.txt";
 
 #ifdef NIKON_API
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, DkViewPort* viewport, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
@@ -4088,12 +4089,9 @@ DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, DkVie
 
 	liveViewTimer.reset(new QTimer(this));
 	connect(liveViewTimer.get(), SIGNAL(timeout()), this, SLOT(updateLiveViewImage()));
-
-	//readSettings();
 }
 
 DkCamControls::~DkCamControls() {
-	//writeSettings();
 }
 
 void DkCamControls::createLayout() {
@@ -4198,6 +4196,10 @@ void DkCamControls::createLayout() {
 	// connections
 	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShoot()));
 	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAf()));
+	connect(loadProfileButton, SIGNAL(clicked()), this, SLOT(loadProfile()));
+	connect(saveProfileButton, SIGNAL(clicked()), this, SLOT(saveProfile()));
+	connect(newProfileButton, SIGNAL(clicked()), this, SLOT(newProfile()));
+	connect(deleteProfileButton, SIGNAL(clicked()), this, SLOT(deleteProfile()));
 	connect(this, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(arrangeLayout(Qt::DockWidgetArea)));
 	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
 }
@@ -4389,8 +4391,8 @@ void DkCamControls::updateUiValues() {
 	updateExposureMode();
 	updateExposureModeDependentUiValues();
 
-	shootButton->setEnabled(connected);
-	shootAfButton->setEnabled(connected);
+	mainGroup->setEnabled(connected);
+	profilesGroup->setEnabled(connected);
 }
 
 void DkCamControls::updateExposureModeDependentUiValues() {
@@ -4421,44 +4423,17 @@ void DkCamControls::onComboActivated(int index) {
 	if (QObject::sender() == apertureCombo) {
 		MaidFacade::MaybeStringValues aperture = maidFacade->getAperture();
 		if (aperture.second && index != aperture.first.currentValue) {
-			if (!maidFacade->setAperture(apertureCombo->currentIndex())) {
-				QMessageBox dialog(this);
-				dialog.setIcon(QMessageBox::Warning);
-				dialog.setText(tr("Aperture value could not be set"));
-				dialog.show();
-				dialog.exec();
-
-				//qDebug() << tr("Aperture value could not be set");
-				apertureCombo->setCurrentIndex(aperture.first.currentValue);
-			}
+			setAperture(apertureCombo->currentIndex(), aperture.first.currentValue);
 		}
 	} else if (QObject::sender() == isoCombo) {
 		MaidFacade::MaybeStringValues sensitivity = maidFacade->getSensitivity();
 		if (sensitivity.second && index != sensitivity.first.currentValue) {
-			if (!maidFacade->setSensitivity(isoCombo->currentIndex())) {
-				QMessageBox dialog(this);
-				dialog.setIcon(QMessageBox::Warning);
-				dialog.setText(tr("Sensitivity value could not be set"));
-				dialog.show();
-				dialog.exec();
-
-				//qDebug() << tr("Sensitivity value could not be set");
-				isoCombo->setCurrentIndex(sensitivity.first.currentValue);
-			}
+			setSensitivity(isoCombo->currentIndex(), sensitivity.first.currentValue);
 		}
 	} else if (QObject::sender() == shutterSpeedCombo) {
 		MaidFacade::MaybeStringValues shutterSpeed = maidFacade->getShutterSpeed();
 		if (shutterSpeed.second && index != shutterSpeed.first.currentValue) {
-			if (!maidFacade->setShutterSpeed(shutterSpeedCombo->currentIndex())) {
-				QMessageBox dialog(this);
-				dialog.setIcon(QMessageBox::Warning);
-				dialog.setText(tr("Shutter speed value could not be set"));
-				dialog.show();
-				dialog.exec();
-
-				//qDebug() << tr("Shutter speed value could not be set");
-				shutterSpeedCombo->setCurrentIndex(shutterSpeed.first.currentValue);
-			}
+			setShutterSpeed(shutterSpeedCombo->currentIndex(), shutterSpeed.first.currentValue);
 		}
 	}
 }
@@ -4470,18 +4445,92 @@ void DkCamControls::onExposureModeActivated(int index) {
 
 	MaidFacade::MaybeUnsignedValues exposureMode = maidFacade->getExposureMode();
 	if (exposureMode.second && index != exposureMode.first.currentValue) {
-		if (maidFacade->setExposureMode(index)) {
-			updateExposureModeDependentUiValues();
-		} else {
-			QMessageBox dialog(this);
-			dialog.setIcon(QMessageBox::Warning);
-			dialog.setText(tr("Exposure mode could not be set"));
-			dialog.show();
-			dialog.exec();
+		setExposureMode(index, exposureMode.first.currentValue);
+	}
+}
 
-			//qDebug() << tr("Exposure mode could not be set");
-			exposureModeCombo->setCurrentIndex(exposureMode.first.currentValue);
+void DkCamControls::setExposureMode(const int index, int fallback) {
+	if (fallback == -1) {
+		fallback = exposureModeCombo->currentIndex();
+	}
+
+	if (maidFacade->setExposureMode(index)) {
+		if (exposureModeCombo->currentIndex() != index) {
+			exposureModeCombo->setCurrentIndex(index);
 		}
+		updateExposureModeDependentUiValues();
+	} else {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("Exposure mode could not be set"));
+		dialog.show();
+		dialog.exec();
+
+		//qDebug() << tr("Exposure mode could not be set");
+		exposureModeCombo->setCurrentIndex(fallback);
+	}
+}
+
+void DkCamControls::setAperture(const int index, int fallback) {
+	if (fallback == -1) {
+		fallback = apertureCombo->currentIndex();
+	}
+
+	if (maidFacade->setAperture(index)) {
+		if (apertureCombo->currentIndex() != index) {
+			apertureCombo->setCurrentIndex(index);
+		}
+	} else {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("Aperture value could not be set"));
+		dialog.show();
+		dialog.exec();
+
+		//qDebug() << tr("Aperture value could not be set");
+		apertureCombo->setCurrentIndex(fallback);
+	}
+}
+
+void DkCamControls::setShutterSpeed(const int index, int fallback) {
+	if (fallback == -1) {
+		fallback = shutterSpeedCombo->currentIndex();
+	}
+
+	if (maidFacade->setSensitivity(index)) {
+		if (isoCombo->currentIndex() != index) {
+			isoCombo->setCurrentIndex(index);
+		}
+	} else {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("Sensitivity value could not be set"));
+		dialog.show();
+		dialog.exec();
+
+		//qDebug() << tr("Sensitivity value could not be set");
+		isoCombo->setCurrentIndex(fallback);
+	}
+}
+
+void DkCamControls::setSensitivity(const int index, int fallback) {
+	if (fallback == -1) {
+		fallback = isoCombo->currentIndex();
+	}
+
+	if (maidFacade->setShutterSpeed(index)) {
+		if (shutterSpeedCombo->currentIndex() != index) {
+			shutterSpeedCombo->setCurrentIndex(index);
+		}
+	} else {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("Shutter speed value could not be set"));
+		dialog.show();
+		dialog.exec();
+
+		//qDebug() << tr("Shutter speed value could not be set");
+		shutterSpeedCombo->setCurrentIndex(fallback);
 	}
 }
 
@@ -4669,6 +4718,99 @@ void DkCamControls::onLiveView() {
 		dialog.exec();
 
 		//qDebug() << tr("Could not capture image with AF");
+	}
+}
+
+// profiles
+
+void DkCamControls::loadProfile() {
+	const Profile& p = profiles.at(profilesCombo->currentIndex());
+	//exposureModeCombo->setCurrentIndex(p.exposureModeIndex);
+	//apertureCombo->setCurrentIndex(p.apertureIndex);
+	//isoCombo->setCurrentIndex(p.sensitivityIndex);
+	//shutterSpeedCombo->setCurrentIndex(p.shutterSpeedIndex);
+	setExposureMode(p.exposureModeIndex);
+	setAperture(p.apertureIndex);
+	setSensitivity(p.sensitivityIndex);
+	setShutterSpeed(p.shutterSpeedIndex);
+}
+
+void DkCamControls::saveProfile() {
+	const int currentIndex = profilesCombo->currentIndex();
+	if (currentIndex > -1) {
+		Profile p = createProfileFromCurrent(profiles.at(currentIndex).name);
+		profiles.replace(currentIndex, p);
+		writeProfiles();
+	}
+}
+
+void DkCamControls::deleteProfile() {
+	const int& currentIndex = profilesCombo->currentIndex();
+	if (currentIndex > -1 && profiles.size() > 0) {
+		auto answer = QMessageBox::question(
+			this, 
+			tr("Delete profile"), 
+			tr("Do you really want to delete the selected profile?"), 
+			QMessageBox::StandardButtons(QMessageBox::Yes | QMessageBox::No)
+			);
+		if (answer != QMessageBox::Yes) {
+			return;
+		}
+
+		profiles.erase(profiles.begin() + currentIndex);
+		profilesCombo->removeItem(currentIndex);
+	}
+}
+
+void DkCamControls::newProfile() {
+	const QString name = QInputDialog::getText(this, tr("New profile"), tr("Enter a name for the new profile"), QLineEdit::Normal);
+	if (name.isEmpty()) {
+		return;
+	}
+
+	Profile p = createProfileFromCurrent(name);
+	profiles.append(p);
+
+	writeProfiles();
+	
+	profilesCombo->addItem(p.name);
+	profilesCombo->setCurrentIndex(profiles.size() - 1);
+}
+
+DkCamControls::Profile DkCamControls::createProfileFromCurrent(const QString& name) {
+	Profile p;
+	p.name = name;
+	p.exposureModeIndex = exposureModeCombo->currentIndex();
+	p.apertureIndex = apertureCombo->currentIndex();
+	p.sensitivityIndex = isoCombo->currentIndex();
+	p.shutterSpeedIndex = shutterSpeedCombo->currentIndex();
+	return p;
+}
+
+/**
+ * Write the profiles to a file
+ */
+void DkCamControls::writeProfiles() {
+	QFile file(profilesFileName);
+	if (file.open(QFile::WriteOnly | QFile::Text)) {
+		QTextStream stream(&file);
+		for (const Profile& p : profiles) {
+			QStringList list;
+			list
+				<< p.name
+				<< QString::number(p.exposureModeIndex)
+				<< QString::number(p.apertureIndex)
+				<< QString::number(p.sensitivityIndex)
+				<< QString::number(p.shutterSpeedIndex);
+			stream << list.join(";") << "\n";
+		}
+	} else {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("The profiles file could not be opened for writing."));
+		dialog.show();
+		dialog.exec();
+		qDebug() << profilesFileName << " could not be opened.";
 	}
 }
 
