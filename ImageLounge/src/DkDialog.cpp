@@ -4778,10 +4778,20 @@ void DkCamControls::newProfile() {
 DkCamControls::Profile DkCamControls::createProfileFromCurrent(const QString& name) {
 	Profile p;
 	p.name = name;
-	p.exposureModeIndex = exposureModeCombo->currentIndex();
-	p.apertureIndex = apertureCombo->currentIndex();
-	p.sensitivityIndex = isoCombo->currentIndex();
-	p.shutterSpeedIndex = shutterSpeedCombo->currentIndex();
+
+	auto setProfileIndex = [&] (int& index, QComboBox* comboBox) {
+		if (comboBox->isEnabled()) {
+			index = comboBox->currentIndex();
+		} else {
+			index = -1;
+		}
+	};
+
+	setProfileIndex(p.exposureModeIndex, exposureModeCombo);
+	setProfileIndex(p.apertureIndex, apertureCombo);
+	setProfileIndex(p.sensitivityIndex, isoCombo);
+	setProfileIndex(p.shutterSpeedIndex, shutterSpeedCombo);
+
 	return p;
 }
 
