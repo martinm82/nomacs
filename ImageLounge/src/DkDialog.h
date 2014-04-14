@@ -1049,6 +1049,7 @@ protected:
 	void setShutterSpeed(const int index, int fallback = -1);
 	void setSensitivity(const int index, int fallback = -1);
 	void setExposureMode(const int index, int fallback = -1);
+	void setCameraComboBoxValue(QComboBox* comboBox, std::function<bool(size_t)> setCameraValue, std::function<void()> onSuccess, const int index, int fallback = -1);
 	Profile createProfileFromCurrent(const QString& name);
 
 	static const int stateRefreshRate;

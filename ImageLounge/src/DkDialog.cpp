@@ -4450,87 +4450,59 @@ void DkCamControls::onExposureModeActivated(int index) {
 }
 
 void DkCamControls::setExposureMode(const int index, int fallback) {
-	if (fallback == -1) {
-		fallback = exposureModeCombo->currentIndex();
-	}
-
-	if (maidFacade->setExposureMode(index)) {
-		if (exposureModeCombo->currentIndex() != index) {
-			exposureModeCombo->setCurrentIndex(index);
-		}
-		updateExposureModeDependentUiValues();
-	} else {
-		QMessageBox dialog(this);
-		dialog.setIcon(QMessageBox::Warning);
-		dialog.setText(tr("Exposure mode could not be set"));
-		dialog.show();
-		dialog.exec();
-
-		//qDebug() << tr("Exposure mode could not be set");
-		exposureModeCombo->setCurrentIndex(fallback);
-	}
+	setCameraComboBoxValue(exposureModeCombo, 
+		[&] (size_t v) { return maidFacade->setExposureMode(v); }, 
+		[&] () { updateExposureModeDependentUiValues(); }, 
+		index, 
+		fallback);
 }
 
 void DkCamControls::setAperture(const int index, int fallback) {
+	setCameraComboBoxValue(apertureCombo, 
+		[&] (size_t v) { return maidFacade->setAperture(v); }, 
+		[&] () {}, 
+		index, 
+		fallback);
+}
+
+void DkCamControls::setShutterSpeed(const int index, int fallback) {
+	setCameraComboBoxValue(shutterSpeedCombo, 
+		[&] (size_t v) { return maidFacade->setShutterSpeed(v); }, 
+		[&] () {}, 
+		index, 
+		fallback);
+}
+
+void DkCamControls::setSensitivity(const int index, int fallback) {
+	setCameraComboBoxValue(isoCombo, 
+		[&] (size_t v) { return maidFacade->setSensitivity(v); }, 
+		[&] () {}, 
+		index, 
+		fallback);
+}
+
+void DkCamControls::setCameraComboBoxValue(QComboBox* comboBox, std::function<bool(size_t)> setCameraValue, std::function<void()> onSuccess, const int index, int fallback) {
+	if (index == -1) {
+		return;
+	}
 	if (fallback == -1) {
 		fallback = apertureCombo->currentIndex();
 	}
 
-	if (maidFacade->setAperture(index)) {
-		if (apertureCombo->currentIndex() != index) {
-			apertureCombo->setCurrentIndex(index);
+	if (setCameraValue(index)) {
+		if (comboBox->currentIndex() != index) {
+			comboBox->setCurrentIndex(index);
 		}
+		onSuccess();
 	} else {
 		QMessageBox dialog(this);
 		dialog.setIcon(QMessageBox::Warning);
-		dialog.setText(tr("Aperture value could not be set"));
+		dialog.setText(tr("Value could not be set: ") + comboBox->objectName());
 		dialog.show();
 		dialog.exec();
 
 		//qDebug() << tr("Aperture value could not be set");
-		apertureCombo->setCurrentIndex(fallback);
-	}
-}
-
-void DkCamControls::setShutterSpeed(const int index, int fallback) {
-	if (fallback == -1) {
-		fallback = shutterSpeedCombo->currentIndex();
-	}
-
-	if (maidFacade->setSensitivity(index)) {
-		if (isoCombo->currentIndex() != index) {
-			isoCombo->setCurrentIndex(index);
-		}
-	} else {
-		QMessageBox dialog(this);
-		dialog.setIcon(QMessageBox::Warning);
-		dialog.setText(tr("Sensitivity value could not be set"));
-		dialog.show();
-		dialog.exec();
-
-		//qDebug() << tr("Sensitivity value could not be set");
-		isoCombo->setCurrentIndex(fallback);
-	}
-}
-
-void DkCamControls::setSensitivity(const int index, int fallback) {
-	if (fallback == -1) {
-		fallback = isoCombo->currentIndex();
-	}
-
-	if (maidFacade->setShutterSpeed(index)) {
-		if (shutterSpeedCombo->currentIndex() != index) {
-			shutterSpeedCombo->setCurrentIndex(index);
-		}
-	} else {
-		QMessageBox dialog(this);
-		dialog.setIcon(QMessageBox::Warning);
-		dialog.setText(tr("Shutter speed value could not be set"));
-		dialog.show();
-		dialog.exec();
-
-		//qDebug() << tr("Shutter speed value could not be set");
-		shutterSpeedCombo->setCurrentIndex(fallback);
+		comboBox->setCurrentIndex(fallback);
 	}
 }
 
@@ -4725,10 +4697,6 @@ void DkCamControls::onLiveView() {
 
 void DkCamControls::loadProfile() {
 	const Profile& p = profiles.at(profilesCombo->currentIndex());
-	//exposureModeCombo->setCurrentIndex(p.exposureModeIndex);
-	//apertureCombo->setCurrentIndex(p.apertureIndex);
-	//isoCombo->setCurrentIndex(p.sensitivityIndex);
-	//shutterSpeedCombo->setCurrentIndex(p.shutterSpeedIndex);
 	setExposureMode(p.exposureModeIndex);
 	setAperture(p.apertureIndex);
 	setSensitivity(p.sensitivityIndex);
