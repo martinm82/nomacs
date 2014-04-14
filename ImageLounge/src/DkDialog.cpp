@@ -4108,7 +4108,7 @@ void DkCamControls::createLayout() {
 	exposureModeCombo = new QComboBox();
 	exposureModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 	exposureModeCombo->setObjectName("exposureModeCombo");
-	exposureModeCombo->setAccessibleName("Exposure Mode");
+	exposureModeCombo->setAccessibleName(tr("Exposure Mode"));
 	exposureModeLayout->addWidget(exposureModeLabel);
 	exposureModeLayout->addWidget(exposureModeCombo);
 	exposureModeWidget->setLayout(exposureModeLayout);
@@ -4118,7 +4118,7 @@ void DkCamControls::createLayout() {
 	QLabel* apertureLabel = new QLabel(tr("Aperture"));
 	apertureCombo = new QComboBox();
 	apertureCombo->setObjectName("apertureCombo");
-	apertureCombo->setAccessibleName("Aperture");
+	apertureCombo->setAccessibleName(tr("Aperture"));
 	apertureLayout->addWidget(apertureLabel);
 	apertureLayout->addWidget(apertureCombo);
 	apertureWidget->setLayout(apertureLayout);
@@ -4128,7 +4128,7 @@ void DkCamControls::createLayout() {
 	QLabel* isoLabel = new QLabel(tr("Sensitivity (ISO)"));
 	isoCombo = new QComboBox();
 	isoCombo->setObjectName("isoCombo");
-	isoCombo->setAccessibleName("ISO Sensitivity");
+	isoCombo->setAccessibleName(tr("ISO Sensitivity"));
 	isoLayout->addWidget(isoLabel);
 	isoLayout->addWidget(isoCombo);
 	isoWidget->setLayout(isoLayout);
@@ -4138,7 +4138,7 @@ void DkCamControls::createLayout() {
 	QLabel* shutterSpeedLabel = new QLabel(tr("Shutter Speed"));
 	shutterSpeedCombo = new QComboBox();
 	shutterSpeedCombo->setObjectName("shutterSpeedCombo");
-	shutterSpeedCombo->setAccessibleName("Shutter Speed");
+	shutterSpeedCombo->setAccessibleName(tr("Shutter Speed"));
 	shutterSpeedLayout->addWidget(shutterSpeedLabel);
 	shutterSpeedLayout->addWidget(shutterSpeedCombo);
 	shutterSpeedWidget->setLayout(shutterSpeedLayout);
@@ -4154,7 +4154,7 @@ void DkCamControls::createLayout() {
 	boxFillerV = new QSpacerItem(20, 20, QSizePolicy::Minimum, QSizePolicy::Expanding);
 	boxFillerH = new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-	mainGroup = new QGroupBox("Camera options");
+	mainGroup = new QGroupBox(tr("Camera options"));
 	mainGroup->setFlat(true);
 	mainLayout = new QVBoxLayout();
 	mainLayout->addWidget(exposureModeWidget);
@@ -4171,17 +4171,21 @@ void DkCamControls::createLayout() {
 	newProfileButton = new QPushButton();
 	newProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_FileDialogNewFolder));
 	newProfileButton->adjustSize();
+	newProfileButton->setToolTip(tr("Create a new Profile for the current settings"));
 	deleteProfileButton = new QPushButton();
 	deleteProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogDiscardButton));
 	deleteProfileButton->adjustSize();
+	deleteProfileButton->setToolTip(tr("Delete the selected profile"));
 	loadProfileButton = new QPushButton();
 	loadProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
 	loadProfileButton->adjustSize();
+	loadProfileButton->setToolTip(tr("Load and apply the selected profile"));
 	saveProfileButton = new QPushButton();
 	saveProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogSaveButton));
 	saveProfileButton->adjustSize();
+	saveProfileButton->setToolTip(tr("Save the current settings for the selected profile"));
 
-	profilesGroup = new QGroupBox("Profiles");
+	profilesGroup = new QGroupBox(tr("Profiles"));
 	profilesGroup->setFlat(true);
 	profilesLayout = new QHBoxLayout();
 	profilesLayout->addWidget(profilesCombo);
