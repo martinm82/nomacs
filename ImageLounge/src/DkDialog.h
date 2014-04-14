@@ -1014,6 +1014,7 @@ protected slots:
 	void stateUpdate();
 	void updateLiveViewImage();
 	void onComboActivated(int);
+	void onProfilesComboIndexChanged(int);
 	void onExposureModeActivated(int index);
 	void arrangeLayout(Qt::DockWidgetArea location = Qt::DockWidgetArea::NoDockWidgetArea);
 	void loadProfile();
@@ -1041,6 +1042,7 @@ protected:
 	void updateSensitivity();
 	void updateShutterSpeed();
 	void updateExposureMode();
+	void updateProfilesUi();
 	void setConnected(bool connected);
 	void closeDeviceAndSetState();
 	void shoot(bool withAf = false);

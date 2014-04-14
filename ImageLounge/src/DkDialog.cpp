@@ -4107,6 +4107,8 @@ void DkCamControls::createLayout() {
 	QLabel* exposureModeLabel = new QLabel(tr("Exposure Mode"));
 	exposureModeCombo = new QComboBox();
 	exposureModeCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+	exposureModeCombo->setObjectName("exposureModeCombo");
+	exposureModeCombo->setAccessibleName("Exposure Mode");
 	exposureModeLayout->addWidget(exposureModeLabel);
 	exposureModeLayout->addWidget(exposureModeCombo);
 	exposureModeWidget->setLayout(exposureModeLayout);
@@ -4115,6 +4117,8 @@ void DkCamControls::createLayout() {
 	apertureLayout = new QHBoxLayout();
 	QLabel* apertureLabel = new QLabel(tr("Aperture"));
 	apertureCombo = new QComboBox();
+	apertureCombo->setObjectName("apertureCombo");
+	apertureCombo->setAccessibleName("Aperture");
 	apertureLayout->addWidget(apertureLabel);
 	apertureLayout->addWidget(apertureCombo);
 	apertureWidget->setLayout(apertureLayout);
@@ -4123,6 +4127,8 @@ void DkCamControls::createLayout() {
 	isoLayout = new QHBoxLayout();
 	QLabel* isoLabel = new QLabel(tr("Sensitivity (ISO)"));
 	isoCombo = new QComboBox();
+	isoCombo->setObjectName("isoCombo");
+	isoCombo->setAccessibleName("ISO Sensitivity");
 	isoLayout->addWidget(isoLabel);
 	isoLayout->addWidget(isoCombo);
 	isoWidget->setLayout(isoLayout);
@@ -4131,6 +4137,8 @@ void DkCamControls::createLayout() {
 	shutterSpeedLayout = new QHBoxLayout();
 	QLabel* shutterSpeedLabel = new QLabel(tr("Shutter Speed"));
 	shutterSpeedCombo = new QComboBox();
+	shutterSpeedCombo->setObjectName("shutterSpeedCombo");
+	shutterSpeedCombo->setAccessibleName("Shutter Speed");
 	shutterSpeedLayout->addWidget(shutterSpeedLabel);
 	shutterSpeedLayout->addWidget(shutterSpeedCombo);
 	shutterSpeedWidget->setLayout(shutterSpeedLayout);
@@ -4193,6 +4201,8 @@ void DkCamControls::createLayout() {
 	widget->setLayout(outerLayout);
 	setWidget(widget);
 
+	updateProfilesUi();
+
 	// connections
 	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShoot()));
 	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAf()));
@@ -4200,6 +4210,7 @@ void DkCamControls::createLayout() {
 	connect(saveProfileButton, SIGNAL(clicked()), this, SLOT(saveProfile()));
 	connect(newProfileButton, SIGNAL(clicked()), this, SLOT(newProfile()));
 	connect(deleteProfileButton, SIGNAL(clicked()), this, SLOT(deleteProfile()));
+	connect(profilesCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(onProfilesComboIndexChanged(int)));
 	connect(this, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(arrangeLayout(Qt::DockWidgetArea)));
 	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
 }
@@ -4438,6 +4449,10 @@ void DkCamControls::onComboActivated(int index) {
 	}
 }
 
+void DkCamControls::onProfilesComboIndexChanged(int index) {
+	updateProfilesUi();
+}
+
 void DkCamControls::onExposureModeActivated(int index) {
 	if (index <= -1) {
 		return;
@@ -4497,7 +4512,7 @@ void DkCamControls::setCameraComboBoxValue(QComboBox* comboBox, std::function<bo
 	} else {
 		QMessageBox dialog(this);
 		dialog.setIcon(QMessageBox::Warning);
-		dialog.setText(tr("Value could not be set: ") + comboBox->objectName());
+		dialog.setText(tr("Value could not be set: ") + comboBox->accessibleName());
 		dialog.show();
 		dialog.exec();
 
@@ -4655,6 +4670,19 @@ void DkCamControls::updateExposureMode() {
 	}
 }
 
+void DkCamControls::updateProfilesUi() {
+	if (profilesCombo->currentIndex() == -1 || profilesCombo->count() == 0) {
+		loadProfileButton->setEnabled(false);
+		saveProfileButton->setEnabled(false);
+		deleteProfileButton->setEnabled(false);
+	} else {
+		loadProfileButton->setEnabled(true);
+		saveProfileButton->setEnabled(true);
+		deleteProfileButton->setEnabled(true);
+	}
+	newProfileButton->setEnabled(true);
+}
+
 void DkCamControls::onShoot() {
 	shoot(false);
 }
@@ -4727,6 +4755,8 @@ void DkCamControls::deleteProfile() {
 
 		profiles.erase(profiles.begin() + currentIndex);
 		profilesCombo->removeItem(currentIndex);
+
+		updateProfilesUi();
 	}
 }
 
