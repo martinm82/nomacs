@@ -4729,7 +4729,47 @@ void DkCamControls::onLiveView() {
 
 void DkCamControls::loadProfile() {
 	const Profile& p = profiles.at(profilesCombo->currentIndex());
+	const QString unequalItemCountText = tr("Could not apply profile because the number of available values does not match (wrong camera model?)");
+	QString errorText;
+
+	bool lensAttached = maidFacade->isLensAttached();
+	if (p.lensAttached != lensAttached) {
+		if (lensAttached) {
+			errorText = tr("Could not apply profile because it was made without the lens attached");
+		} else {
+			errorText = tr("Could not apply profile because it was made with the lens attached");
+		}
+	} else if (p.exposureModeCount != exposureModeCombo->count()) {
+		errorText = unequalItemCountText;
+	}
+		
+	if (!errorText.isEmpty()) {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(errorText);
+		dialog.show();
+		dialog.exec();
+		return;
+	}
+
 	setExposureMode(p.exposureModeIndex);
+
+	if (p.apertureCount != apertureCombo->count()
+		|| p.sensitivityCount != isoCombo->count()
+		|| p.shutterSpeedCount != shutterSpeedCombo->count()) {
+
+		errorText = unequalItemCountText;
+	}
+
+	if (!errorText.isEmpty()) {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(errorText);
+		dialog.show();
+		dialog.exec();
+		return;
+	}
+
 	setAperture(p.apertureIndex);
 	setSensitivity(p.sensitivityIndex);
 	setShutterSpeed(p.shutterSpeedIndex);
@@ -4791,6 +4831,11 @@ DkCamControls::Profile DkCamControls::createProfileFromCurrent(const QString& na
 		}
 	};
 
+	p.lensAttached = maidFacade->isLensAttached();
+	p.exposureModeCount = exposureModeCombo->count();
+	p.apertureCount = apertureCombo->count();
+	p.sensitivityCount = isoCombo->count();
+	p.shutterSpeedCount = shutterSpeedCombo->count();
 	setProfileIndex(p.exposureModeIndex, exposureModeCombo);
 	setProfileIndex(p.apertureIndex, apertureCombo);
 	setProfileIndex(p.sensitivityIndex, isoCombo);
@@ -4810,10 +4855,16 @@ void DkCamControls::writeProfiles() {
 			QStringList list;
 			list
 				<< p.name
+				<< QString::number(p.lensAttached)
+				<< QString::number(p.exposureModeCount)
 				<< QString::number(p.exposureModeIndex)
+				<< QString::number(p.apertureCount)
 				<< QString::number(p.apertureIndex)
+				<< QString::number(p.sensitivityCount)
 				<< QString::number(p.sensitivityIndex)
+				<< QString::number(p.shutterSpeedCount)
 				<< QString::number(p.shutterSpeedIndex);
+
 			stream << list.join(";") << "\n";
 		}
 	} else {
