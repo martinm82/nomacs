@@ -4817,8 +4817,16 @@ void DkCamControls::newProfile() {
 
 	writeProfiles();
 	
-	profilesCombo->addItem(p.name);
+	addProfilesComboItem(p);
 	profilesCombo->setCurrentIndex(profiles.size() - 1);
+}
+
+void DkCamControls::addProfilesComboItem(const Profile& p) {
+	QString name = p.name;
+	if (!p.lensAttached) {
+		name = "(" + name + ")";
+	}
+	profilesCombo->addItem(name);
 }
 
 DkCamControls::Profile DkCamControls::createProfileFromCurrent(const QString& name) {
@@ -4917,7 +4925,7 @@ void DkCamControls::readProfiles() {
 		p.shutterSpeedIndex = fields.at(++i).toInt();
 
 		profiles.append(p);
-		profilesCombo->addItem(p.name);
+		addProfilesComboItem(p);
 	}
 
 	profilesCombo->setCurrentIndex(-1);

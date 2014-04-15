@@ -1059,6 +1059,7 @@ protected:
 	Profile createProfileFromCurrent(const QString& name);
 	void writeProfiles();
 	void readProfiles();
+	void addProfilesComboItem(const Profile& p);
 
 	static const int stateRefreshRate;
 	static const int liveViewImageRate;
