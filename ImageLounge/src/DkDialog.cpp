@@ -4076,7 +4076,7 @@ const QString DkCamControls::profilesFileName = "cameraProfiles.txt";
 
 #ifdef NIKON_API
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, DkViewPort* viewport, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
-	: QDockWidget(title, parent, flags), maidFacade(maidFacade), connected(false), mainLayout(nullptr), viewport(viewport) {
+	: QDockWidget(title, parent, flags), maidFacade(maidFacade), connected(false), mainLayout(nullptr), viewport(viewport), liveViewActive(false) {
 
 	setObjectName("DkCamControls");
 	createLayout();
@@ -4332,6 +4332,7 @@ void DkCamControls::stateUpdate() {
 					liveViewTimer->stop();
 				}
 
+				updateUiValues();
 				emit statusChanged();
 			}
 		}
@@ -4364,6 +4365,12 @@ void DkCamControls::updateLiveViewImage() {
 }
 
 void DkCamControls::closeDeviceAndSetState() {
+	if (maidFacade->isLiveViewActive()) {
+		maidFacade->toggleLiveView();
+		liveViewTimer->stop();
+		viewport->setImage(QImage());
+	}
+
 	try {
 		maidFacade->closeSource();
 	} catch (Maid::MaidError) {
@@ -4408,8 +4415,13 @@ void DkCamControls::updateUiValues() {
 	updateExposureMode();
 	updateExposureModeDependentUiValues();
 
-	mainGroup->setEnabled(connected);
-	profilesGroup->setEnabled(connected);
+	if (liveViewActive) {
+		mainGroup->setEnabled(false);
+		profilesGroup->setEnabled(false);
+	} else {
+		mainGroup->setEnabled(connected);
+		profilesGroup->setEnabled(connected);
+	}
 }
 
 void DkCamControls::updateExposureModeDependentUiValues() {
@@ -4716,6 +4728,7 @@ void DkCamControls::shoot(bool withAf) {
 void DkCamControls::onLiveView() {
 	try {
 		maidFacade->toggleLiveView();
+		stateUpdate();
 	} catch (Maid::MaidError e) {
 		QMessageBox dialog(this);
 		dialog.setIcon(QMessageBox::Warning);
