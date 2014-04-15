@@ -50,8 +50,7 @@ void MaidFacade::setCapValueChangeCallback(std::function<void(uint32_t)> capValu
  */
 std::set<uint32_t> MaidFacade::listDevices() {
 	auto& devicesV = moduleObject->getChildren();
-	std::set<uint32_t> devices(devicesV.begin(), devicesV.end());
-	return devices;
+	return std::set<uint32_t>(devicesV.begin(), devicesV.end());
 }
 
 /*!
@@ -396,9 +395,9 @@ bool MaidFacade::toggleLiveView() {
 	try {
 		sourceObject->capSet(kNkMAIDCapability_LiveViewStatus, kNkMAIDDataType_Unsigned, (NKPARAM) lvStatus);
 
-		if (isLiveViewActive()) {
-			getLiveViewImage();
-		}
+		//if (isLiveViewActive()) {
+		//	getLiveViewImage();
+		//}
 	} catch (Maid::MaidError) {
 		return false;
 	}
@@ -423,7 +422,7 @@ QImage MaidFacade::getLiveViewImage() {
 	NkMAIDArray dataArray;
 	dataArray.pData = nullptr;
 	int i = 0;
-	unsigned char* data = nullptr;
+	std::unique_ptr<unsigned char[]> data;
 	bool r = true;
 	QImage empty = QImage();
 
@@ -448,24 +447,17 @@ QImage MaidFacade::getLiveViewImage() {
 	try {
 		// get info about image, allocate memory
 		sourceObject->capGet(kNkMAIDCapability_GetLiveViewImage, kNkMAIDDataType_ArrayPtr, (NKPARAM) &dataArray);
-		dataArray.pData = malloc(dataArray.ulElements * dataArray.wPhysicalBytes);
+		dataArray.pData = new unsigned char[dataArray.ulElements * dataArray.wPhysicalBytes];
+		data.reset((unsigned char*) dataArray.pData); // just for RAII/automatic deletion
 
 		// get data
 		sourceObject->capGetArray(kNkMAIDCapability_GetLiveViewImage, kNkMAIDDataType_ArrayPtr, (NKPARAM) &dataArray);
 	} catch (Maid::MaidError) {
-		if (dataArray.pData) {
-			delete[] dataArray.pData;
-		}
 		return empty;
 	}
 
-	data = (unsigned char*) dataArray.pData;
-	// construct a QImage out of the data
-	QImage image = QImage::fromData(data + headerSize, dataArray.ulElements - headerSize, "JPEG");
-
-	delete[] dataArray.pData;
-
-	return image;
+	// construct a QImage out of the data and return it
+	return QImage::fromData(((unsigned char*) dataArray.pData) + headerSize, dataArray.ulElements - headerSize, "JPEG");
 }
 
 std::pair<QStringList, size_t> MaidFacade::toQStringList(const StringValues& values) {
