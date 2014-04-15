@@ -1,7 +1,6 @@
 #include "MaidObject.h"
 #include "MaidUtil.h"
 #include "MaidError.h"
-#include "ScopedMaidEnumData.h"
 
 using Maid::MaidObject;
 
@@ -29,15 +28,14 @@ void MaidObject::enumCaps() {
 
  		if (result == kNkMAIDResult_NoError) {
  			// allocate memory for the capability array
- 			capArray = new NkMAIDCapInfo[capCount];
+ 			capArray.reset(new NkMAIDCapInfo[capCount]);
   
- 			if (capArray != nullptr) {
-				result = MaidUtil::getInstance().callMAIDEntryPoint(obj, kNkMAIDCommand_GetCapInfo, capCount, kNkMAIDDataType_CapInfoPtr, (NKPARAM) capArray, NULL, 0);
+ 			if (capArray) {
+				result = MaidUtil::getInstance().callMAIDEntryPoint(obj, kNkMAIDCommand_GetCapInfo, capCount, kNkMAIDDataType_CapInfoPtr, (NKPARAM) capArray.get(), NULL, 0);
 
  				if (result == kNkMAIDResult_BufferSize)
  				{
-					delete[] capArray;
-					capArray = NULL;
+					capArray.reset();
 				}
 			}
 		}
@@ -71,7 +69,7 @@ MaidObject* MaidObject::create(ULONG id, MaidObject* parent) {
  */
 std::vector<NkMAIDCapInfo> MaidObject::enumCapsVector() {
 	enumCaps();
-	return std::vector<NkMAIDCapInfo>(capArray, capArray + capCount);
+	return std::vector<NkMAIDCapInfo>(capArray.get(), capArray.get() + capCount);
 }
 
 /*!
@@ -327,12 +325,12 @@ std::vector<ULONG> MaidObject::getChildren() {
 	}
 
 	childrenEnum.pData = new uint32_t[childrenEnum.ulElements];
-	ScopedMaidEnumData e(&childrenEnum);
+	std::unique_ptr<uint32_t[]> data((uint32_t*) childrenEnum.pData); // just for RAII
 	try {
-		capGetArray(kNkMAIDCapability_Children, kNkMAIDDataType_EnumPtr, (NKPARAM) e.getEnum());
+		capGetArray(kNkMAIDCapability_Children, kNkMAIDDataType_EnumPtr, (NKPARAM) &childrenEnum);
 
 		for (size_t i = 0; i < childrenEnum.ulElements; ++i) {
-			childIDs.push_back(((uint32_t*) e.getEnum()->pData)[i]);
+			childIDs.push_back(((uint32_t*) childrenEnum.pData)[i]);
 		}
 	} catch (MaidError e) {
 		throw e;

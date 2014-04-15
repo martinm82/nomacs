@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 #include <set>
 #include "Maid3.h"
 #include "Maid3d1.h"
@@ -45,7 +46,7 @@ private:
 	std::set<MaidObject*> children;
 	NkMAIDObject* obj;
 	ULONG capCount; // capabilites count
-	LPNkMAIDCapInfo capArray; // capabilites array
+	std::unique_ptr<NkMAIDCapInfo> capArray; // capabilites array
 	ULONG id;
 };
 
