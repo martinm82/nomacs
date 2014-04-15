@@ -4217,6 +4217,8 @@ void DkCamControls::createLayout() {
 	connect(profilesCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(onProfilesComboIndexChanged(int)));
 	connect(this, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(arrangeLayout(Qt::DockWidgetArea)));
 	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
+
+	readProfiles();
 }
 
 void DkCamControls::arrangeLayout(Qt::DockWidgetArea location) {
@@ -4849,32 +4851,76 @@ DkCamControls::Profile DkCamControls::createProfileFromCurrent(const QString& na
  */
 void DkCamControls::writeProfiles() {
 	QFile file(profilesFileName);
-	if (file.open(QFile::WriteOnly | QFile::Text)) {
-		QTextStream stream(&file);
-		for (const Profile& p : profiles) {
-			QStringList list;
-			list
-				<< p.name
-				<< QString::number(p.lensAttached)
-				<< QString::number(p.exposureModeCount)
-				<< QString::number(p.exposureModeIndex)
-				<< QString::number(p.apertureCount)
-				<< QString::number(p.apertureIndex)
-				<< QString::number(p.sensitivityCount)
-				<< QString::number(p.sensitivityIndex)
-				<< QString::number(p.shutterSpeedCount)
-				<< QString::number(p.shutterSpeedIndex);
-
-			stream << list.join(";") << "\n";
-		}
-	} else {
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
 		QMessageBox dialog(this);
 		dialog.setIcon(QMessageBox::Warning);
 		dialog.setText(tr("The profiles file could not be opened for writing."));
 		dialog.show();
 		dialog.exec();
-		qDebug() << profilesFileName << " could not be opened.";
+		qDebug() << profilesFileName << " could not be opened for writing.";
+		return;
 	}
+
+	QTextStream stream(&file);
+	for (const Profile& p : profiles) {
+		QStringList list;
+		list
+			<< p.name
+			<< QString::number(p.lensAttached)
+			<< QString::number(p.exposureModeCount)
+			<< QString::number(p.exposureModeIndex)
+			<< QString::number(p.apertureCount)
+			<< QString::number(p.apertureIndex)
+			<< QString::number(p.sensitivityCount)
+			<< QString::number(p.sensitivityIndex)
+			<< QString::number(p.shutterSpeedCount)
+			<< QString::number(p.shutterSpeedIndex);
+
+		stream << list.join(";") << "\n";
+	}
+}
+
+/**
+ * Reads the profiles from the file and updates the combo box
+ */
+void DkCamControls::readProfiles() {
+	QFile file(profilesFileName);
+	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		QMessageBox dialog(this);
+		dialog.setIcon(QMessageBox::Warning);
+		dialog.setText(tr("The profiles file could not be opened for reading."));
+		dialog.show();
+		dialog.exec();
+		qDebug() << profilesFileName << " could not be opened for reading.";
+		return;
+	}
+
+	QStringList fields;
+	QTextStream in(&file);
+	profiles.clear();
+	profilesCombo->clear();
+	int i = 0;
+	while (!in.atEnd()) {
+		Profile p;
+		i = 0;
+		
+		fields = in.readLine().split(";");
+		p.name = fields.at(i);
+		p.lensAttached = fields.at(++i).toInt();
+		p.exposureModeCount = fields.at(++i).toInt();
+		p.exposureModeIndex = fields.at(++i).toInt();
+		p.apertureCount = fields.at(++i).toInt();
+		p.apertureIndex = fields.at(++i).toInt();
+		p.sensitivityCount = fields.at(++i).toInt();
+		p.sensitivityIndex = fields.at(++i).toInt();
+		p.shutterSpeedCount = fields.at(++i).toInt();
+		p.shutterSpeedIndex = fields.at(++i).toInt();
+
+		profiles.append(p);
+		profilesCombo->addItem(p.name);
+	}
+
+	profilesCombo->setCurrentIndex(-1);
 }
 
 ConnectDeviceDialog::ConnectDeviceDialog(MaidFacade* maidFacade, QWidget* parent)
