@@ -4423,8 +4423,13 @@ void DkCamControls::updateUiValues() {
 	updateExposureModeDependentUiValues();
 
 	if (liveViewActive) {
-		mainGroup->setEnabled(false);
 		profilesGroup->setEnabled(false);
+		mainGroup->setEnabled(true);
+		for (QComboBox* o : mainGroup->findChildren<QComboBox*>()) {
+			o->setEnabled(false);
+		}
+		shootAfButton->setEnabled(false);
+		shootButton->setEnabled(true);
 	} else {
 		mainGroup->setEnabled(connected);
 		profilesGroup->setEnabled(connected);
@@ -4717,6 +4722,9 @@ void DkCamControls::onShootAf() {
 }
 
 void DkCamControls::shoot(bool withAf) {
+	mainGroup->setEnabled(false);
+	profilesGroup->setEnabled(false);
+	qApp->processEvents();
 	try {
 		maidFacade->shoot(withAf);
 	} catch (Maid::MaidError e) {
@@ -4728,6 +4736,8 @@ void DkCamControls::shoot(bool withAf) {
 
 		//qDebug() << tr("Could not capture image");
 	}
+	mainGroup->setEnabled(true);
+	profilesGroup->setEnabled(true);
 }
 
 void DkCamControls::onLiveView() {
@@ -4772,6 +4782,7 @@ void DkCamControls::loadProfile() {
 		return;
 	}
 
+	// the exposure mode has to be set first, it determines how many values there are for the other settings
 	setExposureMode(p.exposureModeIndex);
 
 	if (p.apertureCount != apertureCombo->count()
