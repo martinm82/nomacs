@@ -317,10 +317,10 @@ bool MaidFacade::shoot(bool withAf) {
 
 	sourceIdleLoop(&captureCount);
 
-	return acquireItemObjects(sourceObject);
+	return acquireItemObjects();
 }
 
-bool MaidFacade::acquireItemObjects(const std::unique_ptr<MaidObject>& itemObject) {
+bool MaidFacade::acquireItemObjects() {
 	CompletionProcData* complData;
 	NkMAIDCapInfo capInfo;
 	std::vector<ULONG> itemIds;

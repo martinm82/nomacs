@@ -4721,8 +4721,6 @@ void DkCamControls::shoot(bool withAf) {
 
 		//qDebug() << tr("Could not capture image");
 	}
-
-	// TODO load image into viewport
 }
 
 void DkCamControls::onLiveView() {

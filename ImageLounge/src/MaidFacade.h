@@ -81,7 +81,7 @@ public:
 	bool setExposureMode(size_t newValue);
 	bool isLensAttached();
 	bool shoot(bool withAf = false);
-	bool acquireItemObjects(const std::unique_ptr<Maid::MaidObject>& sourceObject);
+	bool acquireItemObjects();
 	bool toggleLiveView();
 	bool isLiveViewActive();
 	QImage getLiveViewImage();
