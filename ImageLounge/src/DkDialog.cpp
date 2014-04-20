@@ -4365,7 +4365,14 @@ void DkCamControls::updateLiveViewImage() {
 }
 
 void DkCamControls::closeDeviceAndSetState() {
-	if (maidFacade->isLiveViewActive()) {
+	bool lvActive = false;
+	try {
+		lvActive = maidFacade->isLiveViewActive();
+	} catch (Maid::MaidError) {
+		lvActive = false;
+	}
+
+	if (lvActive) {
 		maidFacade->toggleLiveView();
 		liveViewTimer->stop();
 		viewport->setImage(QImage());
