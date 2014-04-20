@@ -1026,14 +1026,10 @@ protected:
 	struct Profile {
 		QString name;
 		bool lensAttached;
-		int exposureModeCount;
-		int exposureModeIndex;
-		int apertureCount;
-		int apertureIndex;
-		int sensitivityCount;
-		int sensitivityIndex;
-		int shutterSpeedCount;
-		int shutterSpeedIndex;
+		QString exposureMode;
+		QString aperture;
+		QString sensitivity;
+		QString shutterSpeed;
 	};
 
 	void showEvent(QShowEvent *event);

@@ -4759,19 +4759,17 @@ void DkCamControls::onLiveView() {
 
 void DkCamControls::loadProfile() {
 	const Profile& p = profiles.at(profilesCombo->currentIndex());
-	const QString unequalItemCountText = tr("Could not apply profile because the number of available values does not match (wrong camera model?)");
+	const QString unequalItemsText = tr("Could not apply profile because a value from the profile was not available (wrong camera model?)");
 	QString errorText;
 
 	bool lensAttached = maidFacade->isLensAttached();
-	if (p.lensAttached != lensAttached) {
+	if (p.lensAttached != lensAttached || exposureModeCombo->findText(p.exposureMode) == -1) {
 		if (lensAttached) {
 			errorText = tr("Could not apply profile because it was made without the lens attached");
 		} else {
 			errorText = tr("Could not apply profile because it was made with the lens attached");
 		}
-	} else if (p.exposureModeCount != exposureModeCombo->count()) {
-		errorText = unequalItemCountText;
-	}
+	} 
 		
 	if (!errorText.isEmpty()) {
 		QMessageBox dialog(this);
@@ -4782,17 +4780,24 @@ void DkCamControls::loadProfile() {
 		return;
 	}
 
-	// the exposure mode has to be set first, it determines how many values there are for the other settings
-	setExposureMode(p.exposureModeIndex);
+	// the exposure mode has to be set first, it determines the values for the other settings
+	const int prevExposureModeIndex = exposureModeCombo->currentIndex();
+	setExposureMode(exposureModeCombo->findText(p.exposureMode));
+ 
+	const int apertureIndex = apertureCombo->findText(p.aperture);
+	const int sensitivityIndex = isoCombo->findText(p.sensitivity);
+	const int shutterSpeedIndex = shutterSpeedCombo->findText(p.shutterSpeed);
 
-	if (p.apertureCount != apertureCombo->count()
-		|| p.sensitivityCount != isoCombo->count()
-		|| p.shutterSpeedCount != shutterSpeedCombo->count()) {
+	if (apertureIndex == -1 && !p.aperture.isEmpty() 
+		|| sensitivityIndex == -1 && !p.sensitivity.isEmpty() 
+		|| shutterSpeedIndex == -1 && !p.shutterSpeed.isEmpty()) {
 
-		errorText = unequalItemCountText;
+		errorText = unequalItemsText;
 	}
 
 	if (!errorText.isEmpty()) {
+		setExposureMode(prevExposureModeIndex);
+
 		QMessageBox dialog(this);
 		dialog.setIcon(QMessageBox::Warning);
 		dialog.setText(errorText);
@@ -4801,9 +4806,15 @@ void DkCamControls::loadProfile() {
 		return;
 	}
 
-	setAperture(p.apertureIndex);
-	setSensitivity(p.sensitivityIndex);
-	setShutterSpeed(p.shutterSpeedIndex);
+	if (!p.aperture.isEmpty()) {
+		setAperture(apertureIndex);
+	}
+	if (!p.sensitivity.isEmpty()) {
+		setSensitivity(sensitivityIndex);
+	}
+	if (!p.shutterSpeed.isEmpty()) {
+		setShutterSpeed(shutterSpeedIndex);
+	}
 }
 
 void DkCamControls::saveProfile() {
@@ -4862,23 +4873,19 @@ DkCamControls::Profile DkCamControls::createProfileFromCurrent(const QString& na
 	Profile p;
 	p.name = name;
 
-	auto setProfileIndex = [&] (int& index, QComboBox* comboBox) {
+	auto setProfileValue = [&] (QString& field, QComboBox* comboBox) {
 		if (comboBox->isEnabled()) {
-			index = comboBox->currentIndex();
+			field = comboBox->currentText();
 		} else {
-			index = -1;
+			field = "";
 		}
 	};
 
 	p.lensAttached = maidFacade->isLensAttached();
-	p.exposureModeCount = exposureModeCombo->count();
-	p.apertureCount = apertureCombo->count();
-	p.sensitivityCount = isoCombo->count();
-	p.shutterSpeedCount = shutterSpeedCombo->count();
-	setProfileIndex(p.exposureModeIndex, exposureModeCombo);
-	setProfileIndex(p.apertureIndex, apertureCombo);
-	setProfileIndex(p.sensitivityIndex, isoCombo);
-	setProfileIndex(p.shutterSpeedIndex, shutterSpeedCombo);
+	setProfileValue(p.exposureMode, exposureModeCombo);
+	setProfileValue(p.aperture, apertureCombo);
+	setProfileValue(p.sensitivity, isoCombo);
+	setProfileValue(p.shutterSpeed, shutterSpeedCombo);
 
 	return p;
 }
@@ -4904,17 +4911,15 @@ void DkCamControls::writeProfiles() {
 		list
 			<< p.name
 			<< QString::number(p.lensAttached)
-			<< QString::number(p.exposureModeCount)
-			<< QString::number(p.exposureModeIndex)
-			<< QString::number(p.apertureCount)
-			<< QString::number(p.apertureIndex)
-			<< QString::number(p.sensitivityCount)
-			<< QString::number(p.sensitivityIndex)
-			<< QString::number(p.shutterSpeedCount)
-			<< QString::number(p.shutterSpeedIndex);
+			<< p.exposureMode
+			<< p.aperture
+			<< p.sensitivity
+			<< p.shutterSpeed;
 
 		stream << list.join(";") << "\n";
 	}
+
+	file.close();
 }
 
 /**
@@ -4922,7 +4927,7 @@ void DkCamControls::writeProfiles() {
  */
 void DkCamControls::readProfiles() {
 	QFile file(profilesFileName);
-	if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+	if (!file.open(QIODevice::ReadWrite | QIODevice::Text)) {
 		QMessageBox dialog(this);
 		dialog.setIcon(QMessageBox::Warning);
 		dialog.setText(tr("The profiles file could not be opened for reading."));
@@ -4944,20 +4949,17 @@ void DkCamControls::readProfiles() {
 		fields = in.readLine().split(";");
 		p.name = fields.at(i);
 		p.lensAttached = fields.at(++i).toInt();
-		p.exposureModeCount = fields.at(++i).toInt();
-		p.exposureModeIndex = fields.at(++i).toInt();
-		p.apertureCount = fields.at(++i).toInt();
-		p.apertureIndex = fields.at(++i).toInt();
-		p.sensitivityCount = fields.at(++i).toInt();
-		p.sensitivityIndex = fields.at(++i).toInt();
-		p.shutterSpeedCount = fields.at(++i).toInt();
-		p.shutterSpeedIndex = fields.at(++i).toInt();
+		p.exposureMode = fields.at(++i);
+		p.aperture = fields.at(++i);
+		p.sensitivity = fields.at(++i);
+		p.shutterSpeed = fields.at(++i);
 
 		profiles.append(p);
 		addProfilesComboItem(p);
 	}
 
 	profilesCombo->setCurrentIndex(-1);
+	file.close();
 }
 
 ConnectDeviceDialog::ConnectDeviceDialog(MaidFacade* maidFacade, QWidget* parent)
