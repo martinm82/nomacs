@@ -4,6 +4,8 @@
 #include <chrono>
 #include <thread>
 #include <QDebug>
+#include <QFutureWatcher>
+#include <QtConcurrentRun>
 #include "MaidFacade.h"
 #include "MaidUtil.h"
 #include "MaidError.h"
@@ -39,6 +41,10 @@ void MaidFacade::init() {
 	//} else {
 	//	qDebug() << "kNkMAIDCapability_ModuleMode can not be set";
 	//}
+
+	// connect future watchers
+	connect(&shootFutureWatcher, SIGNAL(finished()), this, SLOT(shootFinished()));
+	connect(&acquireFutureWatcher, SIGNAL(finished()), this, SLOT(acquireItemObjectsFinished()));
 }
 
 void MaidFacade::setCapValueChangeCallback(std::function<void(uint32_t)> capValueChangeCallback) {
@@ -297,8 +303,7 @@ void MaidFacade::sourceIdleLoop(ULONG* count) {
 }
 
 bool MaidFacade::shoot(bool withAf) {
-	ULONG captureCount = 0;
-	
+	captureCount = 0;
 	NkMAIDCapInfo capInfo;
 	sourceObject->getCapInfo(kNkMAIDCapability_Capture, &capInfo);
 
@@ -309,15 +314,30 @@ bool MaidFacade::shoot(bool withAf) {
 	if (withAf) {
 		cap = kNkMAIDCapability_AFCapture;
 	}
-	int opRet = sourceObject->capStart(cap, completionProc, (NKREF) complData);
-	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
-		qDebug() << "Error executing capture capability";
-		return false;
+	//int opRet = sourceObject->capStart(cap, completionProc, (NKREF) complData);
+
+	if (!shootFutureWatcher.isRunning()) {
+		// start shooting (threaded)
+		QFuture<int> shootFuture = QtConcurrent::run(sourceObject.get(), &MaidObject::capStart, cap, (LPNKFUNC) completionProc, (NKREF) complData);
+		shootFutureWatcher.setFuture(shootFuture);
+
+		return true;
 	}
 
-	sourceIdleLoop(&captureCount);
+	return false;
+}
 
-	return acquireItemObjects();
+void MaidFacade::shootFinished() {
+	int opRet = shootFutureWatcher.result();
+	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
+		qDebug() << "Error executing capture capability";
+		return;// return false;
+	}
+
+	// start acquiring the pictures (threaded)
+	sourceIdleLoop(&captureCount);
+	QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
+	acquireFutureWatcher.setFuture(acquireFuture);
 }
 
 bool MaidFacade::acquireItemObjects() {
@@ -381,6 +401,40 @@ bool MaidFacade::acquireItemObjects() {
 	}
 
 	return true;
+}
+
+void MaidFacade::acquireItemObjectsFinished() {
+	QString filename;
+	if (prevFilename.isEmpty()) {
+		std::string tempFilename = makePictureFilename();
+		filename = noMacs->getCapturedFileName(QFileInfo(QString::fromStdString(tempFilename)));
+		if (filename.isEmpty()) {
+			//return kNkMAIDResult_NoError;
+			return;
+		}
+		prevFilename = filename;
+	} else {
+		filename = increaseFilenameNumber(QFileInfo(prevFilename));
+	}
+	qDebug() << "saving file: " << filename;
+
+	std::ofstream outFile;
+
+	outFile.open(filename.toStdString(), std::ios::out | std::ios::binary);
+	if (!outFile.good() || !outFile.is_open()) {
+		//return kNkMAIDResult_UnexpectedError;
+		return;
+	}
+
+	qDebug() << "writing " << currentFileFileInfo.ulTotalLength << " bytes";
+	outFile.write(currentFileData->buffer, currentFileFileInfo.ulTotalLength);
+	delete[] currentFileData->buffer;
+	delete currentFileData;
+	currentFileData = nullptr;
+	outFile.close();
+
+	// TODO include errors in signal; show in gui
+	emit shootAndAcquireFinished();
 }
 
 bool MaidFacade::toggleLiveView() {
@@ -484,33 +538,10 @@ NKERROR MaidFacade::processMaidData(NKREF ref, LPVOID info, LPVOID data) {
 		r->offset += fileInfo->ulLength;
 
 		if (r->offset >= fileInfo->ulTotalLength) {
-			// file delivery is finished, write to disk
+			// file delivery is finished
+			// the file will be written to disk in acquireItemObjectsFinished
 
-			QString filename;
-			if (prevFilename.isEmpty()) {
-				std::string tempFilename = makePictureFilename(dataInfo, fileInfo);
-				filename = noMacs->getCapturedFileName(QFileInfo(QString::fromStdString(tempFilename)));
-				if (filename.isEmpty()) {
-					return kNkMAIDResult_NoError;
-				}
-				prevFilename = filename;
-			} else {
-				filename = increaseFilenameNumber(QFileInfo(prevFilename));
-			}
-			qDebug() << "saving file: " << filename;
-
-			std::ofstream outFile;
-
-			outFile.open(filename.toStdString(), std::ios::out | std::ios::binary);
-			if (!outFile.good() || !outFile.is_open()) {
-				return kNkMAIDResult_UnexpectedError;
-			}
-
-			outFile.write(r->buffer, fileInfo->ulTotalLength);
-			delete[] r->buffer;
-			r->buffer = nullptr;
-			r->offset = 0;
-			outFile.close();
+			setCurrentFileData(r, info);
 		}
 	} else { // image
 		return kNkMAIDResult_UnexpectedError;
@@ -543,40 +574,33 @@ NKERROR MaidFacade::processMaidData(NKREF ref, LPVOID info, LPVOID data) {
 	return kNkMAIDResult_NoError;
 }
 
-/*!
- * If fileInfo is nullptr, it is assumed that it is a raw picture
- */
-std::string MaidFacade::makePictureFilename(NkMAIDDataInfo* dataInfo, NkMAIDFileInfo* fileInfo) {
+std::string MaidFacade::makePictureFilename() {
 	std::string prefix;
 	std::string ext;
 
-	if (dataInfo->ulType & kNkMAIDDataObjType_Image) {
+	if (currentFileDataInfo.ulType & kNkMAIDDataObjType_Image) {
 		prefix = "Image";
-	} else if (dataInfo->ulType & kNkMAIDDataObjType_Thumbnail) {
+	} else if (currentFileDataInfo.ulType & kNkMAIDDataObjType_Thumbnail) {
 		prefix = "Thumb";
 	} else {
 		prefix = "Unknown";
 	}
 
-	if (fileInfo == nullptr) {
-		ext = "raw";
-	} else {
-		switch (fileInfo->ulFileDataType) {
-		case kNkMAIDFileDataType_JPEG:
-			ext = "jpg";
-			break;
-		case kNkMAIDFileDataType_TIFF:
-			ext = "tif";
-			break;
-		case kNkMAIDFileDataType_NIF:
-			ext = "nef";
-			break;
-		//case kNkMAIDFileDataType_NDF:
-		//	ext = "ndf";
-		//	break;
-		default:
-			ext = "dat";
-		}
+	switch (currentFileFileInfo.ulFileDataType) {
+	case kNkMAIDFileDataType_JPEG:
+		ext = "jpg";
+		break;
+	case kNkMAIDFileDataType_TIFF:
+		ext = "tif";
+		break;
+	case kNkMAIDFileDataType_NIF:
+		ext = "nef";
+		break;
+	//case kNkMAIDFileDataType_NDF:
+	//	ext = "ndf";
+	//	break;
+	default:
+		ext = "dat";
 	}
 
 	std::stringstream filenameStream;
@@ -605,6 +629,12 @@ QString MaidFacade::increaseFilenameNumber(const QFileInfo& fileInfo) {
 	}
 
 	return filename;
+}
+
+void MaidFacade::setCurrentFileData(DataProcData* fileData, void* info) {
+	currentFileData = fileData;
+	currentFileDataInfo = *static_cast<NkMAIDDataInfo*>(info);
+	currentFileFileInfo = *static_cast<NkMAIDFileInfo*>(info);
 }
 
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
@@ -658,13 +688,8 @@ void CALLPASCAL CALLBACK completionProc(
 
 	// if the operation is aquire, free the memory
 	if(command == kNkMAIDCommand_CapStart && param == kNkMAIDCapability_Acquire) {
-		auto data = static_cast<MaidFacade::DataProcData*>(complData->data);
-		if (data != nullptr) {
-			if (data->buffer != nullptr) {
-				delete[] data->buffer;
-			}
-			delete data;
-		}
+		// here, complData->data would be deleted
+		// because shoot (Acquire) is threaded, this is now done in acquireItemObjectsFinished
 	}
 	
 	if (complData != nullptr) {

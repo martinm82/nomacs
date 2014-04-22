@@ -4207,7 +4207,7 @@ void DkCamControls::createLayout() {
 
 	updateProfilesUi();
 
-	// connections
+	// connect signals
 	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShoot()));
 	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAf()));
 	connect(loadProfileButton, SIGNAL(clicked()), this, SLOT(loadProfile()));
@@ -4217,6 +4217,8 @@ void DkCamControls::createLayout() {
 	connect(profilesCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(onProfilesComboIndexChanged(int)));
 	connect(this, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(arrangeLayout(Qt::DockWidgetArea)));
 	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
+	// maidFacade signals
+	connect(maidFacade, SIGNAL(shootAndAcquireFinished()), this, SLOT(onShootFinished()));
 
 	readProfiles();
 }
@@ -4736,6 +4738,9 @@ void DkCamControls::shoot(bool withAf) {
 
 		//qDebug() << tr("Could not capture image");
 	}
+}
+
+void DkCamControls::onShootFinished() {
 	mainGroup->setEnabled(true);
 	profilesGroup->setEnabled(true);
 }

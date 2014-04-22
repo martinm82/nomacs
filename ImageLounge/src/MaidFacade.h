@@ -9,7 +9,9 @@
 #include <QMutex>
 #include <QString>
 #include <QFileInfo>
+#include <QImage>
 #include <QStringList>
+#include <QFutureWatcher>
 #include "MaidObject.h"
 
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG ulEvent, NKPARAM data);
@@ -20,7 +22,8 @@ namespace nmc {
 
 class DkNoMacs;
 
-class MaidFacade {
+class MaidFacade : public QObject {
+	Q_OBJECT
 
 public:
 	struct StringValues {
@@ -88,6 +91,13 @@ public:
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 	NKERROR processMaidData(NKREF ref, LPVOID info, LPVOID data);
 
+signals:
+	void shootAndAcquireFinished();
+
+private slots:
+	void shootFinished();
+	void acquireItemObjectsFinished();
+
 private:
 	DkNoMacs* noMacs;
 	std::unique_ptr<Maid::MaidObject> moduleObject;
@@ -100,6 +110,12 @@ private:
 	bool lensAttached;
 	QString prevFilename;
 	unsigned int prevFileNumber;
+	QFutureWatcher<int> shootFutureWatcher;
+	QFutureWatcher<bool> acquireFutureWatcher;
+	unsigned long captureCount;
+	DataProcData* currentFileData;
+	NkMAIDDataInfo currentFileDataInfo;
+	NkMAIDFileInfo currentFileFileInfo;
 	
 	//void closeChildren(std::unique_ptr<Maid::MaidObject> mo);
 	MaybeStringValues readPackedStringCap(ULONG capId);
@@ -108,8 +124,9 @@ private:
 	void sourceIdleLoop(ULONG* count);
 	bool setMaybeStringEnumValue(std::pair<StringValues, bool>& theMaybeValue, ULONG capId, size_t newValue);
 	bool setMaybeUnsignedEnumValue(std::pair<UnsignedValues, bool>& theMaybeValue, ULONG capId, size_t newValue);
-	std::string makePictureFilename(NkMAIDDataInfo* dataInfo, NkMAIDFileInfo* fileInfo = nullptr);
+	std::string makePictureFilename();
 	QString increaseFilenameNumber(const QFileInfo& fileInfo);
+	void setCurrentFileData(DataProcData* currentFileData, void* info);
 };
 
 };
