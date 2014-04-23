@@ -2475,7 +2475,10 @@ QString DkNoMacs::getCapturedFileName(const QFileInfo& saveFile) {
 
 	int filterIdx = -1;
 
-	QStringList sF = DkImageLoader::saveFilters;
+	// do not use the nomacs saveFilters here, the file format is already set
+	QStringList sF;
+	sF.append("Nikon (*.nef)");
+	sF.append("JPEG (*.jpg *.jpeg)");
 	//qDebug() << sF;
 
 	QRegExp exp = QRegExp("*." + saveFile.suffix() + "*", Qt::CaseInsensitive);
