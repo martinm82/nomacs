@@ -997,6 +997,7 @@ public:
 	void setVisible(bool visible);
 	bool isConnected();
 	bool isLiveViewActive();
+	bool isShootActive();
 
 signals:
 	void statusChanged();
@@ -1065,6 +1066,7 @@ protected:
 	MaidFacade* maidFacade;
 	bool connected;
 	bool liveViewActive;
+	bool shootActive;
 	std::unique_ptr<ConnectDeviceDialog> connectDeviceDialog;
 	std::unique_ptr<OpenDeviceProgressDialog> openDeviceProgressDialog;
 	std::unique_ptr<OpenDeviceThread> openDeviceThread;

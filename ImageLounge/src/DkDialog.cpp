@@ -4076,7 +4076,7 @@ const QString DkCamControls::profilesFileName = "cameraProfiles.txt";
 
 #ifdef NIKON_API
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, DkViewPort* viewport, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
-	: QDockWidget(title, parent, flags), maidFacade(maidFacade), connected(false), mainLayout(nullptr), viewport(viewport), liveViewActive(false) {
+	: QDockWidget(title, parent, flags), maidFacade(maidFacade), connected(false), mainLayout(nullptr), viewport(viewport), liveViewActive(false), shootActive(false) {
 
 	setObjectName("DkCamControls");
 	createLayout();
@@ -4307,6 +4307,10 @@ bool DkCamControls::isLiveViewActive() {
 	return liveViewActive;
 }
 
+bool DkCamControls::isShootActive() {
+	return shootActive;
+}
+
 void DkCamControls::stateUpdate() {
 	auto prevDeviceIds = deviceIds;
 	deviceIds = maidFacade->listDevices();
@@ -4435,6 +4439,8 @@ void DkCamControls::updateUiValues() {
 	} else {
 		mainGroup->setEnabled(connected);
 		profilesGroup->setEnabled(connected);
+		shootAfButton->setEnabled(connected);
+		shootButton->setEnabled(connected);
 	}
 }
 
@@ -4726,6 +4732,8 @@ void DkCamControls::onShootAf() {
 void DkCamControls::shoot(bool withAf) {
 	mainGroup->setEnabled(false);
 	profilesGroup->setEnabled(false);
+	shootActive = true;
+	emit statusChanged();
 	qApp->processEvents();
 	try {
 		maidFacade->shoot(withAf);
@@ -4741,8 +4749,10 @@ void DkCamControls::shoot(bool withAf) {
 }
 
 void DkCamControls::onShootFinished() {
+	shootActive = false;
 	mainGroup->setEnabled(true);
 	profilesGroup->setEnabled(true);
+	emit statusChanged();
 }
 
 void DkCamControls::onLiveView() {
