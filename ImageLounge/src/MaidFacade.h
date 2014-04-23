@@ -108,7 +108,7 @@ private:
 	MaybeUnsignedValues exposureMode;
 	QMutex mutex;
 	bool lensAttached;
-	QString prevFilename;
+	QString firstFilename;
 	unsigned int prevFileNumber;
 	QFutureWatcher<int> shootFutureWatcher;
 	QFutureWatcher<bool> acquireFutureWatcher;
@@ -116,6 +116,7 @@ private:
 	DataProcData* currentFileData;
 	NkMAIDDataInfo currentFileDataInfo;
 	NkMAIDFileInfo currentFileFileInfo;
+	bool allItemsAcquired;
 	
 	//void closeChildren(std::unique_ptr<Maid::MaidObject> mo);
 	MaybeStringValues readPackedStringCap(ULONG capId);

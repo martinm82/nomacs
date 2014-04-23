@@ -2480,6 +2480,7 @@ QString DkNoMacs::getCapturedFileName(const QFileInfo& saveFile) {
 
 	QRegExp exp = QRegExp("*." + saveFile.suffix() + "*", Qt::CaseInsensitive);
 	exp.setPatternSyntax(QRegExp::Wildcard);
+	//qDebug() << "exp: " << exp;
 
 	for (int idx = 0; idx < sF.size(); idx++) {
 		if (exp.exactMatch(sF.at(idx))) {

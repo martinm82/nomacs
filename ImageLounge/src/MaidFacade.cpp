@@ -15,7 +15,8 @@ using nmc::MaidFacade;
 using Maid::MaidUtil;
 using Maid::MaidObject;
 
-MaidFacade::MaidFacade(nmc::DkNoMacs* noMacs) : noMacs(noMacs), lensAttached(false), prevFileNumber(0) {
+MaidFacade::MaidFacade(nmc::DkNoMacs* noMacs) 
+	: noMacs(noMacs), lensAttached(false), prevFileNumber(0), captureCount(0), allItemsAcquired(false) {
 }
 
 /*!
@@ -343,98 +344,120 @@ void MaidFacade::shootFinished() {
 bool MaidFacade::acquireItemObjects() {
 	CompletionProcData* complData;
 	NkMAIDCapInfo capInfo;
-	std::vector<ULONG> itemIds;
 
-	while (true) {
-		itemIds = sourceObject->getChildren();
-		if (itemIds.size() <= 0) {
-			qDebug() << "No item objects";
-			break;
-		}
+	allItemsAcquired = false;
 
-		// open the item object
-		std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get())); // we always choose the one at pos 0
-		if (!itemObject) {
-			qDebug() << "Item object #0 could not be opened!";
-			return false;
-		}
+	// acquire the _next_ item object
 
-		itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
-		ULONG dataTypes;
-		itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
+	std::vector<ULONG> itemIds = sourceObject->getChildren();
+	if (itemIds.size() <= 0) {
+		qDebug() << "No item objects left";
 
-		std::unique_ptr<MaidObject> dataObject;
+		// TODO include errors in signal; show in gui
+		emit shootAndAcquireFinished();
+		allItemsAcquired = true;
 
-		if (dataTypes & kNkMAIDDataObjType_Image) {
-			dataObject.reset(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
-		} else if (dataTypes & kNkMAIDDataObjType_File) {
-			dataObject.reset(MaidObject::create(kNkMAIDDataObjType_File, itemObject.get()));
-		} else {
-			break;
-		}
-
-		if (!dataObject) {
-			qDebug() << "Data object could not be opened!";
-			return false;
-		}
-
-		DataProcData* ref = new DataProcData();
-		ref->id = dataObject->getID();
-		ref->maidFacade = this;
-
-		ULONG acquireCount = 0;
-		complData = new CompletionProcData();
-		complData->count = &acquireCount;
-		complData->data = ref;
-
-		//dataObject->capSet(kNkMAIDCapability_DataProc, kNkMAIDDataType_CallbackPtr, (NKPARAM) &stProc);
-		dataObject->setDataCallback((NKREF) ref, dataProc);
-		int opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
-		if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
-			qDebug() << "Error acquiring data";
-			return false;
-		}
-
-		sourceIdleLoop(&acquireCount);
-
-		dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
+		return true;
 	}
+
+	// open the item object
+	std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get())); // we always choose the one at pos 0
+	if (!itemObject) {
+		qDebug() << "Item object #0 could not be opened!";
+		return false;
+	}
+
+	itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
+	ULONG dataTypes;
+	itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
+
+	std::unique_ptr<MaidObject> dataObject;
+
+	if (dataTypes & kNkMAIDDataObjType_Image) {
+		dataObject.reset(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
+	} else if (dataTypes & kNkMAIDDataObjType_File) {
+		dataObject.reset(MaidObject::create(kNkMAIDDataObjType_File, itemObject.get()));
+	} else {
+		return false;
+	}
+
+	if (!dataObject) {
+		qDebug() << "Data object could not be opened!";
+		return false;
+	}
+
+	DataProcData* ref = new DataProcData();
+	ref->id = dataObject->getID();
+	ref->maidFacade = this;
+
+	ULONG acquireCount = 0;
+	complData = new CompletionProcData();
+	complData->count = &acquireCount;
+	complData->data = ref;
+
+	//dataObject->capSet(kNkMAIDCapability_DataProc, kNkMAIDDataType_CallbackPtr, (NKPARAM) &stProc);
+	dataObject->setDataCallback((NKREF) ref, dataProc);
+	int opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
+	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
+		qDebug() << "Error acquiring data";
+		return false;
+	}
+
+	sourceIdleLoop(&acquireCount);
+
+	dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
 
 	return true;
 }
 
 void MaidFacade::acquireItemObjectsFinished() {
-	QString filename;
-	if (prevFilename.isEmpty()) {
-		std::string tempFilename = makePictureFilename();
-		filename = noMacs->getCapturedFileName(QFileInfo(QString::fromStdString(tempFilename)));
-		if (filename.isEmpty()) {
-			//return kNkMAIDResult_NoError;
-			return;
-		}
-		prevFilename = filename;
-	} else {
-		filename = increaseFilenameNumber(QFileInfo(prevFilename));
-	}
-	qDebug() << "saving file: " << filename;
-
-	std::ofstream outFile;
-
-	outFile.open(filename.toStdString(), std::ios::out | std::ios::binary);
-	if (!outFile.good() || !outFile.is_open()) {
-		//return kNkMAIDResult_UnexpectedError;
+	if (allItemsAcquired) {
+		allItemsAcquired = false;
 		return;
 	}
 
-	qDebug() << "writing " << currentFileFileInfo.ulTotalLength << " bytes";
-	outFile.write(currentFileData->buffer, currentFileFileInfo.ulTotalLength);
+	[&] () {
+		QString filename;
+		QFileInfo tempFilenameInfo = QFileInfo(QString::fromStdString(makePictureFilename()));
+		QFileInfo firstFilenameInfo = QFileInfo(firstFilename);
+
+		// if it is the first picture or the file type has changed
+		if (firstFilename.isEmpty()) {
+			filename = noMacs->getCapturedFileName(tempFilenameInfo);
+			if (filename.isEmpty()) {
+				//return kNkMAIDResult_NoError;
+				qDebug() << "filename was empty, file will be discarded";
+				return;
+			}
+			firstFilename = filename;
+		} else {
+			// save 
+			QFileInfo newFilenameInfo = QFileInfo(firstFilenameInfo.baseName() + "." + tempFilenameInfo.suffix());
+			filename = increaseFilenameNumber(newFilenameInfo);
+		}
+		qDebug() << "saving file: " << filename;
+
+		std::ofstream outFile;
+
+		outFile.open(filename.toStdString(), std::ios::out | std::ios::binary);
+		if (!outFile.good() || !outFile.is_open()) {
+			//return kNkMAIDResult_UnexpectedError;
+			qDebug() << "could not open file for writing!";
+			return;
+		}
+
+		qDebug() << "writing " << currentFileFileInfo.ulTotalLength << " bytes";
+		outFile.write(currentFileData->buffer, currentFileFileInfo.ulTotalLength);
+		outFile.close();
+	}();
+
 	delete[] currentFileData->buffer;
 	delete currentFileData;
 	currentFileData = nullptr;
-	outFile.close();
 
-	// TODO include errors in signal; show in gui
-	emit shootAndAcquireFinished();
+	// acquire next item object
+	QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
+	acquireFutureWatcher.setFuture(acquireFuture);
 }
 
 bool MaidFacade::toggleLiveView() {
