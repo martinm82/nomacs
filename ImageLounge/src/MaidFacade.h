@@ -17,6 +17,7 @@
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG ulEvent, NKPARAM data);
 NKERROR CALLPASCAL CALLBACK dataProc(NKREF ref, LPVOID info, LPVOID data);
 void CALLPASCAL CALLBACK completionProc(LPNkMAIDObject pObject, ULONG ulCommand, ULONG ulParam, ULONG ulDataType, NKPARAM data, NKREF refComplete, NKERROR nResult);
+void CALLPASCAL CALLBACK progressProc(ULONG command, ULONG param, NKREF ref, ULONG done, ULONG total);
 
 namespace nmc {
 
@@ -37,12 +38,12 @@ public:
 	};
 
 	struct DataProcData {
-		DataProcData() : buffer(nullptr), offset(0), totalLines(0), id(-1) {}
+		DataProcData(MaidFacade* maidFacade) : maidFacade(maidFacade), buffer(nullptr), offset(0), totalLines(0), id(-1) {}
 		char* buffer;
 		size_t offset;
 		size_t totalLines;
 		long id;
-		MaidFacade* maidFacade;
+		MaidFacade* const maidFacade;
 	};
 
 	struct CompletionProcData {
@@ -50,6 +51,11 @@ public:
 		NKERROR result;
 		ULONG* count;
 		DataProcData* data;
+	};
+
+	struct ProgressProcData {
+		ProgressProcData(MaidFacade* maidFacade) : maidFacade(maidFacade) {}
+		MaidFacade* const maidFacade;
 	};
 
 	typedef std::pair<MaidFacade::StringValues, bool> MaybeStringValues;
@@ -90,9 +96,11 @@ public:
 	QImage getLiveViewImage();
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 	NKERROR processMaidData(NKREF ref, LPVOID info, LPVOID data);
+	void progressCallbackUpdate(ULONG command, ULONG param, ULONG done, ULONG total);
 
 signals:
 	void shootAndAcquireFinished();
+	void updateAcquireProgress(unsigned int done, unsigned int total);
 
 private slots:
 	void shootFinished();

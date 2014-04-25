@@ -1011,6 +1011,7 @@ public slots:
 	void onDeviceOpened();
 	void onOpenDeviceError();
 	void stopActivities();
+	void onUpdateAcquireProgress(unsigned int done, unsigned int total);
 
 protected slots:
 	void stateUpdate();
@@ -1104,6 +1105,7 @@ protected:
 	QHBoxLayout* buttonsLayout;
 	QSpacerItem* boxFillerV;
 	QSpacerItem* boxFillerH;
+	QProgressBar* acquireProgressBar;
 };
 
 

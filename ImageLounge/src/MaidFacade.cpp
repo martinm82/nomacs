@@ -386,17 +386,18 @@ bool MaidFacade::acquireItemObjects() {
 		return false;
 	}
 
-	DataProcData* ref = new DataProcData();
-	ref->id = dataObject->getID();
-	ref->maidFacade = this;
+	DataProcData* dataRef = new DataProcData(this);
+	dataRef->id = dataObject->getID();
+
+	ProgressProcData* progressRef = new ProgressProcData(this);
 
 	ULONG acquireCount = 0;
 	complData = new CompletionProcData();
 	complData->count = &acquireCount;
-	complData->data = ref;
+	complData->data = dataRef;
 
-	//dataObject->capSet(kNkMAIDCapability_DataProc, kNkMAIDDataType_CallbackPtr, (NKPARAM) &stProc);
-	dataObject->setDataCallback((NKREF) ref, dataProc);
+	dataObject->setDataCallback((NKREF) dataRef, dataProc);
+	dataObject->setProgressCallback((NKREF) progressRef, progressProc);
 	int opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
 	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
 		qDebug() << "Error acquiring data";
@@ -660,6 +661,12 @@ void MaidFacade::setCurrentFileData(DataProcData* fileData, void* info) {
 	currentFileFileInfo = *static_cast<NkMAIDFileInfo*>(info);
 }
 
+void MaidFacade::progressCallbackUpdate(ULONG command, ULONG param, ULONG done, ULONG total) {
+	if (command == kNkMAIDCommand_CapStart && param == kNkMAIDCapability_Acquire) {
+		emit updateAcquireProgress(done, total);
+	}
+}
+
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 	MaidFacade* maidFacade = (MaidFacade*) ref;
 
@@ -718,4 +725,14 @@ void CALLPASCAL CALLBACK completionProc(
 	if (complData != nullptr) {
 		delete complData;
 	}
+}
+
+void CALLPASCAL CALLBACK progressProc(
+		ULONG command,
+		ULONG param, 
+		NKREF ref, 
+		ULONG done, 
+		ULONG total) {
+
+	static_cast<MaidFacade::ProgressProcData*>(ref)->maidFacade->progressCallbackUpdate(command, param, done, total);
 }

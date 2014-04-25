@@ -4099,8 +4099,12 @@ void DkCamControls::createLayout() {
 
 	connectionLayout = new QHBoxLayout();
 	lensAttachedLabel = new QLabel();
+	acquireProgressBar = new QProgressBar();
 	updateLensAttachedLabel(false);
 	connectionLayout->addWidget(lensAttachedLabel);
+	connectionLayout->addWidget(acquireProgressBar);
+	acquireProgressBar->setVisible(false);
+	acquireProgressBar->setMinimum(0);
 
 	QWidget* exposureModeWidget = new QWidget();
 	exposureModeLayout = new QHBoxLayout();
@@ -4219,6 +4223,7 @@ void DkCamControls::createLayout() {
 	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
 	// maidFacade signals
 	connect(maidFacade, SIGNAL(shootAndAcquireFinished()), this, SLOT(onShootFinished()));
+	connect(maidFacade, SIGNAL(updateAcquireProgress(unsigned int, unsigned int)), this, SLOT(onUpdateAcquireProgress(unsigned int, unsigned int)));
 
 	readProfiles();
 }
@@ -4752,7 +4757,17 @@ void DkCamControls::onShootFinished() {
 	shootActive = false;
 	mainGroup->setEnabled(true);
 	profilesGroup->setEnabled(true);
+	acquireProgressBar->setVisible(false);
 	emit statusChanged();
+}
+
+void DkCamControls::onUpdateAcquireProgress(unsigned int done, unsigned int total) {
+	if (!acquireProgressBar->isVisible()) {
+		acquireProgressBar->setVisible(true);
+		acquireProgressBar->setMaximum(total);
+	}
+
+	acquireProgressBar->setValue(done);
 }
 
 void DkCamControls::onLiveView() {
