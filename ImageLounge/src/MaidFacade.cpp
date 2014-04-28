@@ -337,8 +337,6 @@ void MaidFacade::shootFinished() {
 
 	// start acquiring the pictures (threaded)
 	sourceIdleLoop(&captureCount);
-	QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
-	acquireFutureWatcher.setFuture(acquireFuture);
 }
 
 bool MaidFacade::acquireItemObjects() {
@@ -409,6 +407,11 @@ bool MaidFacade::acquireItemObjects() {
 	dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
 
 	return true;
+}
+
+void MaidFacade::startAcquireItemObjects() {
+	QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
+	acquireFutureWatcher.setFuture(acquireFuture);
 }
 
 void MaidFacade::acquireItemObjectsFinished() {
@@ -672,10 +675,11 @@ void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 
 	switch (eventType) {
 	case kNkMAIDEvent_AddChild:
-		qDebug() << "A MAID child was added";
+		qDebug() << "A MAID child was added: " << data;
+		maidFacade->startAcquireItemObjects();
 		break;
 	case kNkMAIDEvent_RemoveChild:
-		qDebug() << "A MAID child was removed";
+		qDebug() << "A MAID child was removed: " << data;
 		break;
 	case kNkMAIDEvent_WarmingUp:
 		// The Type0007 Module does not use this event.
@@ -688,14 +692,13 @@ void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 		maidFacade->capValueChangeCallback(data);
 		break;
 	case kNkMAIDEvent_CapChangeValueOnly:
-		// LOG(INFO) << "The value of a Capability (CapID=0x " << std::hex << data << ") was changed.";
 		maidFacade->capValueChangeCallback(data);
 		break;
 	case kNkMAIDEvent_OrphanedChildren:
 		// TODO close children (source objects)
 		break;
 	default:
-		qDebug() << "Unknown Event in a MaidObject.";
+		qDebug() << "Unknown event in a MaidObject.";
 	}
 }
 

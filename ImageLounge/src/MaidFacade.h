@@ -91,6 +91,7 @@ public:
 	bool isLensAttached();
 	bool shoot(bool withAf = false);
 	bool acquireItemObjects();
+	void startAcquireItemObjects();
 	bool toggleLiveView();
 	bool isLiveViewActive();
 	QImage getLiveViewImage();
