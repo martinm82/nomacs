@@ -1060,8 +1060,8 @@ protected:
 	void readProfiles();
 	void addProfilesComboItem(const Profile& p);
 
-	static const int stateRefreshRate;
-	static const int liveViewImageRate;
+	static const int stateRefreshInterval;
+	static const int liveViewImageInterval;
 	static const int horizontalItemSpacing;
 	static const QString profilesFileName;
 	MaidFacade* maidFacade;

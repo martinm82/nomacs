@@ -4069,8 +4069,8 @@ void DkForceThumbDialog::setDir(const QDir& fileInfo) {
 
 // >NIKON: dummy class  [23.1.2014 markus]
 
-const int DkCamControls::stateRefreshRate = 1000; // in ms
-const int DkCamControls::liveViewImageRate = 100;
+const int DkCamControls::stateRefreshInterval = 1000; // in ms
+const int DkCamControls::liveViewImageInterval = 100;
 const int DkCamControls::horizontalItemSpacing = 10;
 const QString DkCamControls::profilesFileName = "cameraProfiles.txt";
 
@@ -4338,7 +4338,7 @@ void DkCamControls::stateUpdate() {
 
 				// start or stop transmitting and displaying images
 				if (liveViewActive) {
-					liveViewTimer->start(liveViewImageRate);
+					liveViewTimer->start(liveViewImageInterval);
 				} else {
 					liveViewTimer->stop();
 				}
@@ -4405,7 +4405,7 @@ void DkCamControls::stopActivities() {
 }
 
 void DkCamControls::showEvent(QShowEvent *event) {
-	stateUpdateTimer->start(stateRefreshRate);
+	stateUpdateTimer->start(stateRefreshInterval);
 }
 
 void DkCamControls::closeEvent(QCloseEvent* event) {
