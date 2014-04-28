@@ -657,7 +657,9 @@ protected:
 
 	// camera controls
 	DkCamControls* camControls;
+#ifdef NIKON_API
 	MaidFacade* maidFacade;
+#endif
 
 	// client managers
 	//DkLocalClientManager* localClientManager;

@@ -1395,8 +1395,10 @@ void DkNoMacs::closeEvent(QCloseEvent *event) {
 		DkSettings::save();
 	}
 
+#ifdef NIKON_API
 	camControls->stopActivities();
 	maidFacade->closeEverything();
+#endif
 
 	QMainWindow::closeEvent(event);
 }

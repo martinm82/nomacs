@@ -1,3 +1,5 @@
+#ifdef NIKON_API
+
 #include <stdexcept>
 #include "MaidUtil.h"
 #include "MaidError.h"
@@ -136,3 +138,5 @@ bool MaidUtil::checkEnumType(NkMAIDEnum* e, ULONG arrayType, SWORD physicalBytes
 
 	return true;
 }
+
+#endif

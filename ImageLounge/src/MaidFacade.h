@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef NIKON_API
+
 #include <memory>
 #include <array>
 #include <set>
@@ -140,3 +142,5 @@ private:
 };
 
 };
+
+#endif

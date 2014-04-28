@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef NIKON_API
+
 #include <vector>
 #include <cstdint>
 #include "Maid3.h"
@@ -67,3 +69,5 @@ private:
 };
 
 }
+
+#endif

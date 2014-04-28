@@ -1,3 +1,5 @@
+#ifdef NIKON_API
+
 #include "MaidObject.h"
 #include "MaidUtil.h"
 #include "MaidError.h"
@@ -357,3 +359,5 @@ bool MaidObject::isAlive() {
 	}
 	return isAlive != 0;
 }
+
+#endif

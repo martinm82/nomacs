@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef NIKON_API
+
 #include <stdexcept>
 
 namespace Maid {
@@ -23,3 +25,5 @@ public:
 };
 
 }
+
+#endif

@@ -1,3 +1,5 @@
+#ifdef NIKON_API
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -739,3 +741,5 @@ void CALLPASCAL CALLBACK progressProc(
 
 	static_cast<MaidFacade::ProgressProcData*>(ref)->maidFacade->progressCallbackUpdate(command, param, done, total);
 }
+
+#endif

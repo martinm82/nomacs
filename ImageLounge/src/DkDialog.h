@@ -926,6 +926,8 @@ protected:
 // >NIKON: if you create a dock widget for e.g. aparture settings, put it here like: [23.1.2014 markus]
 // important: no code in the header!
 
+#ifdef NIKON_API
+
 class OpenDeviceProgressDialog : public QProgressDialog {
 public:
 	OpenDeviceProgressDialog(QWidget* parent);
@@ -986,8 +988,12 @@ class OpenDeviceThread : public QThread {
 		ULONG deviceId;
 };
 
+#endif
+
 class DkCamControls : public QDockWidget {
 	Q_OBJECT
+
+#ifdef NIKON_API
 
 public:
 	DkCamControls(MaidFacade* maidFacade, const QString& title, DkViewPort* viewport, QWidget* parent = 0, Qt::WindowFlags flags = 0);
@@ -1106,6 +1112,15 @@ protected:
 	QSpacerItem* boxFillerV;
 	QSpacerItem* boxFillerH;
 	QProgressBar* acquireProgressBar;
+
+#else
+
+public:
+	DkCamControls() {};
+	virtual ~DkCamControls() {};
+
+#endif
+
 };
 
 

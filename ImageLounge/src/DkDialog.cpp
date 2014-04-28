@@ -4069,12 +4069,13 @@ void DkForceThumbDialog::setDir(const QDir& fileInfo) {
 
 // >NIKON: dummy class  [23.1.2014 markus]
 
+#ifdef NIKON_API
+
 const int DkCamControls::stateRefreshInterval = 1000; // in ms
 const int DkCamControls::liveViewImageInterval = 100;
 const int DkCamControls::horizontalItemSpacing = 10;
 const QString DkCamControls::profilesFileName = "cameraProfiles.txt";
 
-#ifdef NIKON_API
 DkCamControls::DkCamControls(MaidFacade* maidFacade, const QString& title, DkViewPort* viewport, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) 
 	: QDockWidget(title, parent, flags), maidFacade(maidFacade), connected(false), mainLayout(nullptr), viewport(viewport), liveViewActive(false), shootActive(false) {
 
@@ -5087,37 +5088,6 @@ void OpenDeviceProgressDialog::closeEvent(QCloseEvent* e) {
 	} else {
 		QProgressDialog::closeEvent(e);
 	}
-}
-
-#else
-
-DkCamControls::DkCamControls(const QString& title, QWidget* parent /* = 0 */, Qt::WindowFlags flags /* = 0 */) : QDockWidget(title, parent, flags) {
-	setObjectName("DkCamControls");
-}
-
-DkCamControls::~DkCamControls() {
-}
-
-void DkCamControls::createLayout() {
-}
-
-void DkCamControls::closeEvent(QCloseEvent* event) {
-}
-
-void DkCamControls::updateLensAttachedLabel(bool attached) {
-}
-
-ConnectDeviceDialog::ConnectDeviceDialog(MaidFacade* maidFacade, QWidget* parent)
-	: QDialog(parent), maidFacade(maidFacade) {
-}
-
-void ConnectDeviceDialog::createLayout() {
-}
-
-std::pair<ULONG, bool> ConnectDeviceDialog::getSelectedId() {
-}
-
-void ConnectDeviceDialog::updateDevicesList(std::set<ULONG> deviceIds) {
 }
 
 #endif
