@@ -4434,13 +4434,7 @@ void DkCamControls::updateUiValues() {
 	updateExposureModeDependentUiValues();
 
 	if (liveViewActive) {
-		profilesGroup->setEnabled(false);
-		mainGroup->setEnabled(true);
-		for (QComboBox* o : mainGroup->findChildren<QComboBox*>()) {
-			o->setEnabled(false);
-		}
 		shootAfButton->setEnabled(false);
-		shootButton->setEnabled(true);
 	} else {
 		mainGroup->setEnabled(connected);
 		profilesGroup->setEnabled(connected);
