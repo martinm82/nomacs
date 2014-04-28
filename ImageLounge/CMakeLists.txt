@@ -20,6 +20,7 @@ OPTION (ENABLE_RAW "Compile with raw images support (OpenCV, libraw)" ON)
 OPTION (ENABLE_WEBP "Compile with webP support (webP)" ON)
 OPTION (ENABLE_TIFF "Compile with multi-layer tiff" ON)
 OPTION (DISABLE_QT_DEBUG "Disable Qt Debug Messages" OFF)
+OPTION (ENABLE_NIKON "Compile with Nikon camera support" ON)
 
 
 set(NOMACS_VERSION 1.6.3)
@@ -173,7 +174,10 @@ IF(ENABLE_WEBP)
 	add_definitions(-DWITH_WEBP)
 ENDIF(ENABLE_WEBP)
 
-
+#nikon-api
+IF(ENABLE_NIKON)
+	add_definitions(-DNIKON_API)
+ENDIF(ENABLE_NIKON)
 
 IF (ENABLE_RAW)
 
@@ -521,7 +525,11 @@ IF (EXIV2_FOUND)
 		# create projects
 		SET(CMAKE_CONFIGURATION_TYPES "Debug;Release;ReallyRelease" CACHE STRING "limited configs" FORCE)
 		add_definitions(/Zc:wchar_t-)
-		SET(CMAKE_CXX_FLAGS_REALLYRELEASE "-W3 -O2 -DQT_NO_DEBUG_OUTPUT")
+		IF(ENABLE_NIKON)
+			SET(CMAKE_CXX_FLAGS_REALLYRELEASE "-W3 -O2 -DQT_NO_DEBUG_OUTPUT -DNIKON_API")
+		ELSE(ENABLE_NIKON)
+			SET(CMAKE_CXX_FLAGS_REALLYRELEASE "-W3 -O2 -DQT_NO_DEBUG_OUTPUT")
+		ENDIF(ENABLE_NIKON)
 		SET(CMAKE_EXE_LINKER_FLAGS_REALLYRELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /SUBSYSTEM:WINDOWS /LARGEADDRESSAWARE") # /subsystem:windows does not work due to a bug in cmake (see http://public.kitware.com/Bug/view.php?id=12566)
 		
 		set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS_REALLYRELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /SUBSYSTEM:WINDOWS /LARGEADDRESSAWARE")
