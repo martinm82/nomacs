@@ -3339,6 +3339,7 @@ void DkNoMacs::updateCameraStatus() {
 
 	cameraActions[menu_camera_liveview]->setEnabled(connected);
 	if (camControls->isLiveViewActive()) {
+		cameraActions[menu_camera_connect]->setEnabled(false);
 		cameraActions[menu_camera_liveview]->setText(tr("Stop Live View"));
 		cameraActions[menu_camera_shoot]->setEnabled(true);
 		cameraActions[menu_camera_shoot_af]->setEnabled(false);
@@ -3347,12 +3348,14 @@ void DkNoMacs::updateCameraStatus() {
 	}
 
 	if (camControls->isShootActive()) {
+		cameraActions[menu_camera_connect]->setEnabled(false);
 		cameraActions[menu_camera_shoot]->setEnabled(false);
 		cameraActions[menu_camera_shoot_af]->setEnabled(false);
 		cameraActions[menu_camera_liveview]->setEnabled(false);
 	}
 
 	if (!camControls->isLiveViewActive() && !camControls->isShootActive()) {
+		cameraActions[menu_camera_connect]->setEnabled(true);
 		cameraActions[menu_camera_shoot]->setEnabled(connected);
 		cameraActions[menu_camera_shoot_af]->setEnabled(connected);
 	}
