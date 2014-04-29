@@ -18,7 +18,7 @@ using Maid::MaidUtil;
 using Maid::MaidObject;
 
 MaidFacade::MaidFacade(nmc::DkNoMacs* noMacs) 
-	: noMacs(noMacs), lensAttached(false), prevFileNumber(0), captureCount(0), allItemsAcquired(false) {
+	: noMacs(noMacs), lensAttached(false), prevFileNumber(0), captureCount(0), allItemsAcquired(false), currentlyAcquiringObjects(false) {
 }
 
 /*!
@@ -353,7 +353,6 @@ bool MaidFacade::acquireItemObjects() {
 	if (itemIds.size() <= 0) {
 		qDebug() << "No item objects left";
 
-		// TODO include errors in signal; show in gui
 		emit shootAndAcquireFinished();
 		allItemsAcquired = true;
 
@@ -412,13 +411,17 @@ bool MaidFacade::acquireItemObjects() {
 }
 
 void MaidFacade::startAcquireItemObjects() {
-	QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
-	acquireFutureWatcher.setFuture(acquireFuture);
+	if (!currentlyAcquiringObjects) {
+		currentlyAcquiringObjects = true;
+		QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
+		acquireFutureWatcher.setFuture(acquireFuture);
+	}
 }
 
 void MaidFacade::acquireItemObjectsFinished() {
 	if (allItemsAcquired) {
 		allItemsAcquired = false;
+		currentlyAcquiringObjects = false;
 		return;
 	}
 

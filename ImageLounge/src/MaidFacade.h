@@ -128,6 +128,7 @@ private:
 	NkMAIDDataInfo currentFileDataInfo;
 	NkMAIDFileInfo currentFileFileInfo;
 	bool allItemsAcquired;
+	bool currentlyAcquiringObjects;
 	
 	//void closeChildren(std::unique_ptr<Maid::MaidObject> mo);
 	MaybeStringValues readPackedStringCap(ULONG capId);
