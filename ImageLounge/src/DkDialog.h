@@ -1012,6 +1012,7 @@ public slots:
 	void connectDevice();
 	void onShoot();
 	void onShootAf();
+	void onAcquireStart();
 	void onShootFinished();
 	void onLiveView();
 	void onDeviceOpened();

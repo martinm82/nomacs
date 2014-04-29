@@ -4223,6 +4223,7 @@ void DkCamControls::createLayout() {
 	connect(this, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(arrangeLayout(Qt::DockWidgetArea)));
 	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
 	// maidFacade signals
+	connect(maidFacade, SIGNAL(acquireStart()), this, SLOT(onAcquireStart()));
 	connect(maidFacade, SIGNAL(shootAndAcquireFinished()), this, SLOT(onShootFinished()));
 	connect(maidFacade, SIGNAL(updateAcquireProgress(unsigned int, unsigned int)), this, SLOT(onUpdateAcquireProgress(unsigned int, unsigned int)));
 
@@ -4730,11 +4731,6 @@ void DkCamControls::onShootAf() {
 }
 
 void DkCamControls::shoot(bool withAf) {
-	mainGroup->setEnabled(false);
-	profilesGroup->setEnabled(false);
-	shootActive = true;
-	emit statusChanged();
-	qApp->processEvents();
 	try {
 		maidFacade->shoot(withAf);
 	} catch (Maid::MaidError e) {
@@ -4746,6 +4742,14 @@ void DkCamControls::shoot(bool withAf) {
 
 		//qDebug() << tr("Could not capture image");
 	}
+}
+
+void DkCamControls::onAcquireStart() {
+	mainGroup->setEnabled(false);
+	profilesGroup->setEnabled(false);
+	shootActive = true;
+	emit statusChanged();
+	qApp->processEvents();
 }
 
 void DkCamControls::onShootFinished() {

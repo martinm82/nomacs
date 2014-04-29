@@ -413,6 +413,7 @@ bool MaidFacade::acquireItemObjects() {
 void MaidFacade::startAcquireItemObjects() {
 	if (!currentlyAcquiringObjects) {
 		currentlyAcquiringObjects = true;
+		emit acquireStart();
 		QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
 		acquireFutureWatcher.setFuture(acquireFuture);
 	}

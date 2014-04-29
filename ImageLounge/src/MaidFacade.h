@@ -102,6 +102,7 @@ public:
 	void progressCallbackUpdate(ULONG command, ULONG param, ULONG done, ULONG total);
 
 signals:
+	void acquireStart();
 	void shootAndAcquireFinished();
 	void updateAcquireProgress(unsigned int done, unsigned int total);
 
