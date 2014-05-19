@@ -23,7 +23,7 @@ MaidUtil::~MaidUtil() {
 void MaidUtil::loadLibrary() {
 	instModule = LoadLibraryA(PATH_TYPE0007);
 	if (instModule == nullptr) {
-		throw InitError();
+		throw InitError();	// do not throw - if you do not catch
 	}
 }
 

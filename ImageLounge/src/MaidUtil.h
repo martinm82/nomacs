@@ -31,6 +31,10 @@ public:
 	bool checkEnum(NkMAIDEnum* e);
 	bool checkEnumType(NkMAIDEnum* e, ULONG arrayType, SWORD physicalBytes);
 
+	bool isLoaded() {
+		return instModule != nullptr;
+	}
+
 	template<typename T>
 	std::pair<NkMAIDEnum, bool> fillEnum(Maid::MaidObject* maidObject, ULONG capId) {
 		std::pair<NkMAIDEnum, bool> mE;

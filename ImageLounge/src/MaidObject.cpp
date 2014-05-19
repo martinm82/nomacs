@@ -18,6 +18,8 @@ MaidObject::~MaidObject() {
 	closeObject();
 }
 
+#include "DkNoMacs.h"
+
 /*!
  * Enumerate capabilities of the maid object
  * throws MaidError
@@ -26,6 +28,12 @@ void MaidObject::enumCaps() {
 	int result;
 
 	do {
+
+		if (!MaidUtil::getInstance().isLoaded()) {
+			printf("Could not open connection because the NIKON Library was not loaded\n");	// >DIR: add an error dialog [19.5.2014 markus]
+			return;
+		}
+
 		result = MaidUtil::getInstance().callMAIDEntryPoint(obj, kNkMAIDCommand_GetCapCount, 0, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &capCount, NULL, 0);
 
  		if (result == kNkMAIDResult_NoError) {

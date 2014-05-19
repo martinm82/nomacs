@@ -25,10 +25,16 @@ MaidFacade::MaidFacade(nmc::DkNoMacs* noMacs)
  * throws InitError, MaidError
  */
 void MaidFacade::init() {
-	MaidUtil::getInstance().loadLibrary();
-	qDebug() << "Loaded MAID library";
-	MaidUtil::getInstance().initMAID();
-	qDebug() << "Initialized MAID";
+	
+	try {
+		MaidUtil::getInstance().loadLibrary();
+		qDebug() << "Loaded MAID library";
+		MaidUtil::getInstance().initMAID();
+		qDebug() << "Initialized MAID";
+	} catch(...) {
+		qDebug() << "Could not initialize MAID (whatever that is)";
+		return;
+	}
 
 	// create module object
 	moduleObject.reset(MaidObject::create(0, nullptr));
@@ -199,7 +205,7 @@ MaidFacade::MaybeUnsignedValues MaidFacade::getExposureMode() {
 	return exposureMode;
 }
 
-bool MaidFacade::writeEnumCap(ULONG capId, uint32_t newValue) {
+bool MaidFacade::writeEnumCap(ULONG capId, size_t newValue) {
 	try {
 		if (!sourceObject->hasCapOperation(capId, kNkMAIDCapOperation_Set)) {
 			return false;
