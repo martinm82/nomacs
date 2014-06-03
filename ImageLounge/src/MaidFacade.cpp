@@ -72,11 +72,9 @@ std::set<uint32_t> MaidFacade::listDevices() {
  * throws OpenCloseObjectError
  */
 void MaidFacade::openSource(ULONG id) {
-	//mutex.lock();
 	sourceObject.reset(MaidObject::create(id, moduleObject.get()));
 	sourceObject->setEventCallback(this, eventProc);
 	//sourceObject->setProgressCallback(progressProc);
-	//mutex.unlock();
 }
 
 bool MaidFacade::checkCameraType() {
@@ -266,6 +264,12 @@ bool MaidFacade::setExposureMode(size_t newValue) {
 
 bool MaidFacade::isLensAttached() {
 	return lensAttached;
+}
+
+bool MaidFacade::isAutoIso() {
+	bool autoIso;
+	sourceObject->capGet(kNkMAIDCapability_IsoControl, kNkMAIDDataType_BooleanPtr, (NKPARAM) &autoIso);
+	return autoIso;
 }
 
 void MaidFacade::closeModule() {

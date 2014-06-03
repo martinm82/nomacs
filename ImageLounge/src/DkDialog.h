@@ -1047,6 +1047,7 @@ protected:
 
 	void createLayout();
 	void updateLensAttachedLabel(bool attached);
+	void updateAutoIsoLabel();
 	void updateUiValues();
 	void updateExposureModeDependentUiValues();
 	void updateAperture();
@@ -1093,6 +1094,7 @@ protected:
 	QBoxLayout* outerLayout;
 	QHBoxLayout* profilesLayout;
 	QLabel* lensAttachedLabel;
+	QLabel* autoIsoLabel;
 	QComboBox* profilesCombo;
 	QComboBox* exposureModeCombo;
 	QComboBox* isoCombo;

@@ -91,6 +91,7 @@ public:
 	bool setShutterSpeed(size_t newValue);
 	bool setExposureMode(size_t newValue);
 	bool isLensAttached();
+	bool isAutoIso();
 	bool shoot(bool withAf = false);
 	bool acquireItemObjects();
 	void startAcquireItemObjects();

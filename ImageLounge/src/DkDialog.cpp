@@ -4099,10 +4099,14 @@ void DkCamControls::createLayout() {
 	widget = new QWidget();
 
 	connectionLayout = new QHBoxLayout();
-	lensAttachedLabel = new QLabel();
+	lensAttachedLabel = new QLabel(tr("No lens attached"));
+	autoIsoLabel = new QLabel(tr("Auto-ISO is activated"));
+	autoIsoLabel->setToolTip(tr("The selected ISO value will not be used. Deactivate Auto-ISO in the camera menu."));
 	acquireProgressBar = new QProgressBar();
 	updateLensAttachedLabel(false);
+	updateAutoIsoLabel();
 	connectionLayout->addWidget(lensAttachedLabel);
+	connectionLayout->addWidget(autoIsoLabel);
 	connectionLayout->addWidget(acquireProgressBar);
 	acquireProgressBar->setVisible(false);
 	acquireProgressBar->setMinimum(0);
@@ -4424,16 +4428,26 @@ void DkCamControls::setVisible(bool visible) {
 
 void DkCamControls::updateLensAttachedLabel(bool attached) {
 	if (attached || !connected) {
-		lensAttachedLabel->setText(tr(""));
+		lensAttachedLabel->setVisible(false);
 	} else {
-		lensAttachedLabel->setText(tr("No lens attached"));
+		lensAttachedLabel->setVisible(true);
 	}
 }
+
+void DkCamControls::updateAutoIsoLabel() {
+	if (!connected) {
+		autoIsoLabel->setVisible(false);
+	} else {
+		autoIsoLabel->setVisible(maidFacade->isAutoIso());
+	}
+}
+
 
 void DkCamControls::updateUiValues() {
 	// exposure mode first
 	updateExposureMode();
 	updateExposureModeDependentUiValues();
+	updateAutoIsoLabel();
 
 	if (liveViewActive) {
 		shootAfButton->setEnabled(false);
@@ -4465,6 +4479,9 @@ void DkCamControls::capabilityValueChanged(uint32_t capId) {
 	case kNkMAIDCapability_ExposureMode:
 		updateExposureMode();
 		updateExposureModeDependentUiValues();
+		break;
+	case kNkMAIDCapability_IsoControl:
+		updateAutoIsoLabel();
 		break;
 	}
 }
@@ -4695,11 +4712,7 @@ void DkCamControls::updateExposureMode() {
 		exposureModeCombo->setCurrentIndex(exposureMode.first.currentValue);
 
 		// update lens state
-		if (!maidFacade->isLensAttached()) {
-			lensAttachedLabel->setText(tr("No Lens attached"));
-		} else {
-			lensAttachedLabel->clear();
-		}
+		updateLensAttachedLabel(maidFacade->isLensAttached());
 
 		connect(exposureModeCombo, SIGNAL(activated(int)), this, SLOT(onExposureModeActivated(int)));
 		exposureModeCombo->setEnabled(true);
