@@ -4153,9 +4153,12 @@ void DkCamControls::createLayout() {
 	shutterSpeedWidget->setLayout(shutterSpeedLayout);
 
 	buttonsLayout = new QHBoxLayout();
+	afButton = new QPushButton(tr("AF"));
+	afButton->setToolTip(tr("Auto-Focus"));
 	shootButton = new QPushButton(tr("Shoot"));
 	shootAfButton = new QPushButton(tr("Shoot with AF"));
 	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	buttonsLayout->addWidget(afButton);
 	buttonsLayout->addWidget(shootButton);
 	buttonsLayout->addWidget(shootAfButton);
 	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
@@ -4217,6 +4220,7 @@ void DkCamControls::createLayout() {
 	updateProfilesUi();
 
 	// connect signals
+	connect(afButton, SIGNAL(clicked()), this, SLOT(onAutoFocus()));
 	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShoot()));
 	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAf()));
 	connect(loadProfileButton, SIGNAL(clicked()), this, SLOT(loadProfile()));
@@ -4451,11 +4455,13 @@ void DkCamControls::updateUiValues() {
 
 	if (liveViewActive) {
 		shootAfButton->setEnabled(false);
+		afButton->setEnabled(false);
 	} else {
 		mainGroup->setEnabled(connected);
 		profilesGroup->setEnabled(connected);
 		shootAfButton->setEnabled(connected);
 		shootButton->setEnabled(connected);
+		afButton->setEnabled(connected);
 	}
 }
 
@@ -4733,6 +4739,10 @@ void DkCamControls::updateProfilesUi() {
 		deleteProfileButton->setEnabled(true);
 	}
 	newProfileButton->setEnabled(true);
+}
+
+void DkCamControls::onAutoFocus() {
+	maidFacade->autoFocus();
 }
 
 void DkCamControls::onShoot() {

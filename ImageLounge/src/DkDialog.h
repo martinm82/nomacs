@@ -1010,6 +1010,7 @@ signals:
 
 public slots:
 	void connectDevice();
+	void onAutoFocus();
 	void onShoot();
 	void onShootAf();
 	void onAcquireStart();
@@ -1100,6 +1101,7 @@ protected:
 	QComboBox* isoCombo;
 	QComboBox* apertureCombo;
 	QComboBox* shutterSpeedCombo;
+	QPushButton* afButton;
 	QPushButton* shootButton;
 	QPushButton* shootAfButton;
 	QPushButton* newProfileButton;

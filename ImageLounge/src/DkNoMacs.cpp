@@ -657,6 +657,7 @@ void DkNoMacs::createMenu() {
 #ifdef NIKON_API
 	cameraMenu = menu->addMenu(tr("&Camera"));
 	cameraMenu->addAction(cameraActions[menu_camera_connect]);
+	cameraMenu->addAction(cameraActions[menu_camera_af]);
 	cameraMenu->addAction(cameraActions[menu_camera_shoot]);
 	cameraMenu->addAction(cameraActions[menu_camera_shoot_af]);
 	cameraMenu->addAction(cameraActions[menu_camera_liveview]);
@@ -1183,6 +1184,10 @@ void DkNoMacs::createActions() {
 	cameraActions[menu_camera_connect]->setStatusTip(tr("Connect a camera"));
 	cameraActions[menu_camera_connect]->setEnabled(true);
 	connect(cameraActions[menu_camera_connect], SIGNAL(triggered()), camControls, SLOT(connectDevice()));
+
+	cameraActions[menu_camera_af] = new QAction(tr("Auto-Focus"), this);
+	cameraActions[menu_camera_af]->setEnabled(false);
+	connect(cameraActions[menu_camera_af], SIGNAL(triggered()), camControls, SLOT(onAutoFocus()));
 
 	cameraActions[menu_camera_shoot] = new QAction(tr("Shoot"), this);
 	cameraActions[menu_camera_shoot]->setEnabled(false);
@@ -3341,6 +3346,7 @@ void DkNoMacs::updateCameraStatus() {
 	if (camControls->isLiveViewActive()) {
 		cameraActions[menu_camera_connect]->setEnabled(false);
 		cameraActions[menu_camera_liveview]->setText(tr("Stop Live View"));
+		cameraActions[menu_camera_af]->setEnabled(false);
 		cameraActions[menu_camera_shoot]->setEnabled(true);
 		cameraActions[menu_camera_shoot_af]->setEnabled(false);
 	} else {
@@ -3349,6 +3355,7 @@ void DkNoMacs::updateCameraStatus() {
 
 	if (camControls->isShootActive()) {
 		cameraActions[menu_camera_connect]->setEnabled(false);
+		cameraActions[menu_camera_af]->setEnabled(false);
 		cameraActions[menu_camera_shoot]->setEnabled(false);
 		cameraActions[menu_camera_shoot_af]->setEnabled(false);
 		cameraActions[menu_camera_liveview]->setEnabled(false);
@@ -3356,6 +3363,7 @@ void DkNoMacs::updateCameraStatus() {
 
 	if (!camControls->isLiveViewActive() && !camControls->isShootActive()) {
 		cameraActions[menu_camera_connect]->setEnabled(true);
+		cameraActions[menu_camera_af]->setEnabled(connected);
 		cameraActions[menu_camera_shoot]->setEnabled(connected);
 		cameraActions[menu_camera_shoot_af]->setEnabled(connected);
 	}

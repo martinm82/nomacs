@@ -327,7 +327,27 @@ bool MaidFacade::shoot(bool withAf) {
 	if (withAf) {
 		cap = kNkMAIDCapability_AFCapture;
 	}
-	//int opRet = sourceObject->capStart(cap, completionProc, (NKREF) complData);
+
+	if (!shootFutureWatcher.isRunning()) {
+		// start shooting (threaded)
+		QFuture<int> shootFuture = QtConcurrent::run(sourceObject.get(), &MaidObject::capStart, cap, (LPNKFUNC) completionProc, (NKREF) complData);
+		shootFutureWatcher.setFuture(shootFuture);
+
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * AutoFocus is treated like shoot because it does the same kind of operation
+ */
+bool MaidFacade::autoFocus() {
+	captureCount = 0;
+	unsigned long cap = kNkMAIDCapability_AutoFocus;
+
+	CompletionProcData* complData = new CompletionProcData();
+	complData->count = &captureCount;
 
 	if (!shootFutureWatcher.isRunning()) {
 		// start shooting (threaded)

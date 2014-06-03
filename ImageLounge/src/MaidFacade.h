@@ -102,6 +102,9 @@ public:
 	NKERROR processMaidData(NKREF ref, LPVOID info, LPVOID data);
 	void progressCallbackUpdate(ULONG command, ULONG param, ULONG done, ULONG total);
 
+public slots:
+	bool autoFocus();
+
 signals:
 	void acquireStart();
 	void shootAndAcquireFinished();
