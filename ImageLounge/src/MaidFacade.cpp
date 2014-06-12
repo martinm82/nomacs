@@ -368,7 +368,7 @@ void MaidFacade::shootFinished() {
 	}
 
 	// start acquiring the pictures (threaded)
-	sourceIdleLoop(&captureCount);
+	//sourceIdleLoop(&captureCount);
 }
 
 bool MaidFacade::acquireItemObjects() {
