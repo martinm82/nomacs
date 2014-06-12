@@ -31,25 +31,18 @@ void MaidFacade::init() {
 		qDebug() << "Loaded MAID library";
 		MaidUtil::getInstance().initMAID();
 		qDebug() << "Initialized MAID";
-	} catch(...) {
+
+		// create module object
+		moduleObject.reset(MaidObject::create(0, nullptr));
+		moduleObject->enumCaps();
+		qDebug() << "MAID Module Object created";
+	} catch (...) {
 		qDebug() << "Could not initialize MAID (whatever that is)";
 		return;
 	}
-
-	// create module object
-	moduleObject.reset(MaidObject::create(0, nullptr));
-	moduleObject->enumCaps();
-	qDebug() << "MAID Module Object created";
+	
 	// set callbacks
 	moduleObject->setEventCallback(this, eventProc);
-	//moduleObject->setProgressCallback(progressProc);
-	//moduleObject->setUIRequestCallback(uiRequestProc);
-	// set ModuleMode
-	//if (moduleObject->hasCapOperation(kNkMAIDCapability_ModuleMode, kNkMAIDCapOperation_Set)) {
-	//	moduleObject->capSet(kNkMAIDCapability_ModuleMode, kNkMAIDDataType_Unsigned, (NKPARAM) kNkMAIDModuleMode_Controller);
-	//} else {
-	//	qDebug() << "kNkMAIDCapability_ModuleMode can not be set";
-	//}
 
 	// connect future watchers
 	connect(&shootFutureWatcher, SIGNAL(finished()), this, SLOT(shootFinished()));
@@ -77,6 +70,9 @@ void MaidFacade::openSource(ULONG id) {
 	//sourceObject->setProgressCallback(progressProc);
 }
 
+/*!
+ * throws MaidError
+ */
 bool MaidFacade::checkCameraType() {
 	// the only currently supported source is a Nikon D4
 	// read the camera type
@@ -266,6 +262,9 @@ bool MaidFacade::isLensAttached() {
 	return lensAttached;
 }
 
+/*!
+ * throws MaidError
+ */
 bool MaidFacade::isAutoIso() {
 	bool autoIso;
 	sourceObject->capGet(kNkMAIDCapability_IsoControl, kNkMAIDDataType_BooleanPtr, (NKPARAM) &autoIso);
@@ -299,6 +298,9 @@ void MaidFacade::closeEverything() {
 	closeModule();
 }
 
+/*!
+ * throws MaidError
+ */
 bool MaidFacade::isSourceAlive() {
 	if (sourceObject) {
 		return sourceObject->isAlive();
@@ -315,6 +317,9 @@ void MaidFacade::sourceIdleLoop(ULONG* count) {
 	sourceObject->async();
 }
 
+/**
+ * throws MaidError
+ */
 bool MaidFacade::shoot(bool withAf) {
 	captureCount = 0;
 	NkMAIDCapInfo capInfo;
@@ -341,6 +346,7 @@ bool MaidFacade::shoot(bool withAf) {
 
 /**
  * AutoFocus is treated like shoot because it does the same kind of operation
+ * throws MaidError
  */
 bool MaidFacade::autoFocus() {
 	captureCount = 0;
@@ -379,63 +385,67 @@ bool MaidFacade::acquireItemObjects() {
 
 	// acquire the _next_ item object
 
-	std::vector<ULONG> itemIds = sourceObject->getChildren();
-	if (itemIds.size() <= 0) {
-		qDebug() << "No item objects left";
+	try {
+		std::vector<ULONG> itemIds = sourceObject->getChildren();
+		if (itemIds.size() <= 0) {
+			qDebug() << "No item objects left";
 
-		emit shootAndAcquireFinished();
-		allItemsAcquired = true;
+			emit shootAndAcquireFinished();
+			allItemsAcquired = true;
 
-		return true;
+			return true;
+		}
+
+		// open the item object
+		std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get())); // we always choose the one at pos 0
+		if (!itemObject) {
+			qDebug() << "Item object #0 could not be opened!";
+			return false;
+		}
+
+		itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
+		ULONG dataTypes;
+		itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
+
+		std::unique_ptr<MaidObject> dataObject;
+
+		if (dataTypes & kNkMAIDDataObjType_Image) {
+			dataObject.reset(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
+		} else if (dataTypes & kNkMAIDDataObjType_File) {
+			dataObject.reset(MaidObject::create(kNkMAIDDataObjType_File, itemObject.get()));
+		} else {
+			return false;
+		}
+
+		if (!dataObject) {
+			qDebug() << "Data object could not be opened!";
+			return false;
+		}
+
+		DataProcData* dataRef = new DataProcData(this);
+		dataRef->id = dataObject->getID();
+
+		ProgressProcData* progressRef = new ProgressProcData(this);
+
+		ULONG acquireCount = 0;
+		complData = new CompletionProcData();
+		complData->count = &acquireCount;
+		complData->data = dataRef;
+
+		dataObject->setDataCallback((NKREF) dataRef, dataProc);
+		dataObject->setProgressCallback((NKREF) progressRef, progressProc);
+		int opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
+		if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
+			qDebug() << "Error acquiring data";
+			return false;
+		}
+
+		sourceIdleLoop(&acquireCount);
+
+		dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
+	} catch (Maid::MaidError) {
+		qDebug() << "something went wrong in acquireItemObjects";
 	}
-
-	// open the item object
-	std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get())); // we always choose the one at pos 0
-	if (!itemObject) {
-		qDebug() << "Item object #0 could not be opened!";
-		return false;
-	}
-
-	itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
-	ULONG dataTypes;
-	itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
-
-	std::unique_ptr<MaidObject> dataObject;
-
-	if (dataTypes & kNkMAIDDataObjType_Image) {
-		dataObject.reset(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
-	} else if (dataTypes & kNkMAIDDataObjType_File) {
-		dataObject.reset(MaidObject::create(kNkMAIDDataObjType_File, itemObject.get()));
-	} else {
-		return false;
-	}
-
-	if (!dataObject) {
-		qDebug() << "Data object could not be opened!";
-		return false;
-	}
-
-	DataProcData* dataRef = new DataProcData(this);
-	dataRef->id = dataObject->getID();
-
-	ProgressProcData* progressRef = new ProgressProcData(this);
-
-	ULONG acquireCount = 0;
-	complData = new CompletionProcData();
-	complData->count = &acquireCount;
-	complData->data = dataRef;
-
-	dataObject->setDataCallback((NKREF) dataRef, dataProc);
-	dataObject->setProgressCallback((NKREF) progressRef, progressProc);
-	int opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
-	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
-		qDebug() << "Error acquiring data";
-		return false;
-	}
-
-	sourceIdleLoop(&acquireCount);
-
-	dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
 
 	return true;
 }

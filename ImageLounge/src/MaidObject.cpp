@@ -358,6 +358,9 @@ bool MaidObject::async() {
 	return (result == kNkMAIDResult_NoError || result == kNkMAIDResult_Pending);
 }
 
+/*!
+ * throws MaidError
+ */
 bool MaidObject::isAlive() {
 	BYTE isAlive;
 	try {

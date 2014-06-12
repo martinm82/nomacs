@@ -4328,11 +4328,23 @@ bool DkCamControls::isShootActive() {
 
 void DkCamControls::stateUpdate() {
 	auto prevDeviceIds = deviceIds;
-	deviceIds = maidFacade->listDevices();
+	bool isSourceAlive = false;
+	try {
+		deviceIds = maidFacade->listDevices();
+	} catch (Maid::MaidError) {
+		qDebug() << "listing devices failed";
+	}
 
 	if (connected && connectedDeviceId.second) {
+		try {
+			isSourceAlive = maidFacade->isSourceAlive();
+		} catch (Maid::MaidError) {
+			qDebug() << "could not read wether source is alive";
+			isSourceAlive = false;
+		}
+
 		// device disconnected?
-		if (deviceIds.find(connectedDeviceId.first) != deviceIds.end() && !maidFacade->isSourceAlive()) {
+		if (deviceIds.find(connectedDeviceId.first) != deviceIds.end() && !isSourceAlive) {
 			closeDeviceAndSetState();
 		} else {
 			// update live view status
@@ -4442,7 +4454,11 @@ void DkCamControls::updateAutoIsoLabel() {
 	if (!connected) {
 		autoIsoLabel->setVisible(false);
 	} else {
-		autoIsoLabel->setVisible(maidFacade->isAutoIso());
+		try {
+			autoIsoLabel->setVisible(maidFacade->isAutoIso());
+		} catch (Maid::MaidError) {
+			qDebug() << "could not read auto iso (IsoControl) value";
+		}
 	}
 }
 
@@ -4594,7 +4610,9 @@ void DkCamControls::updateAperture() {
 	try {
 		aperture = maidFacade->readAperture();
 		exposureMode = maidFacade->getExposureMode();
-	} catch (Maid::MaidError) {};
+	} catch (Maid::MaidError) {
+		qDebug() << "error reading aperture";
+	}
 
 	apertureCombo->clear();
 	if (aperture.second && exposureMode.second) {
@@ -4630,7 +4648,9 @@ void DkCamControls::updateSensitivity() {
 	MaidFacade::MaybeStringValues sensitivity;
 	try {
 		sensitivity = maidFacade->readSensitivity();
-	} catch (Maid::MaidError) {};
+	} catch (Maid::MaidError) {
+		qDebug() << "error reading ISO sensitivity";
+	}
 
 	isoCombo->clear();
 	if (sensitivity.second) {
@@ -4659,7 +4679,9 @@ void DkCamControls::updateShutterSpeed() {
 	try {
 		shutterSpeed = maidFacade->readShutterSpeed();
 		exposureMode = maidFacade->getExposureMode();
-	} catch (Maid::MaidError) {};
+	} catch (Maid::MaidError) {
+		qDebug() << "error reading shutter speed or exposure mode";
+	};
 
 	shutterSpeedCombo->clear();
 	if (shutterSpeed.second && exposureMode.second) {
@@ -4695,7 +4717,9 @@ void DkCamControls::updateExposureMode() {
 	MaidFacade::MaybeUnsignedValues exposureMode;
 	try {
 		exposureMode = maidFacade->readExposureMode();
-	} catch (Maid::MaidError) {};
+	} catch (Maid::MaidError) {
+		qDebug() << "error reading exposure mode";
+	}
 	
 	if (exposureMode.second) {
 		exposureModeCombo->clear();
@@ -4742,7 +4766,11 @@ void DkCamControls::updateProfilesUi() {
 }
 
 void DkCamControls::onAutoFocus() {
-	maidFacade->autoFocus();
+	try {
+		maidFacade->autoFocus();
+	} catch (Maid::MaidError) {
+		qDebug() << tr("error during auto-focus");
+	}
 }
 
 void DkCamControls::onShoot() {

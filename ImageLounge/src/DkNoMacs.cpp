@@ -1402,7 +1402,12 @@ void DkNoMacs::closeEvent(QCloseEvent *event) {
 
 #ifdef NIKON_API
 	camControls->stopActivities();
-	maidFacade->closeEverything();
+	try {
+		maidFacade->closeEverything();
+	} catch (Maid::MaidError) {
+		// hopefully nothing left to close
+		qDebug() << "unable to close maid objects and module";
+	}
 #endif
 
 	QMainWindow::closeEvent(event);
