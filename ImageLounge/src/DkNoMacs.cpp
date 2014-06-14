@@ -146,8 +146,8 @@ void DkNoMacs::init() {
 #ifdef NIKON_API
 	maidFacade = new MaidFacade(this);
 	if (maidFacade->init()) {
-		connect(camControls, SIGNAL(statusChanged()), this, SLOT(updateCameraStatus()));
 		showCamControls(false);
+		connect(camControls, SIGNAL(statusChanged()), this, SLOT(updateCameraStatus()));
 	} else {
 		QMessageBox warningDialog(this);
 		warningDialog.setWindowTitle(tr("MAID Library could not be opened"));

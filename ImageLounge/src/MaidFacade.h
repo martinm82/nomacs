@@ -102,6 +102,7 @@ public:
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 	NKERROR processMaidData(NKREF ref, LPVOID info, LPVOID data);
 	void progressCallbackUpdate(ULONG command, ULONG param, ULONG done, ULONG total);
+	void enumerateCapsAll();
 
 public slots:
 	bool autoFocus();

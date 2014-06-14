@@ -724,6 +724,11 @@ void MaidFacade::progressCallbackUpdate(ULONG command, ULONG param, ULONG done, 
 	}
 }
 
+void MaidFacade::enumerateCapsAll() {
+	moduleObject->enumCaps();
+	sourceObject->enumCaps();
+}
+
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 	MaidFacade* maidFacade = (MaidFacade*) ref;
 
@@ -742,7 +747,7 @@ void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 		// The Type0007 Module does not use this event.
 		break;
 	case kNkMAIDEvent_CapChange:
-		// TODO re-enumerate the capabilities
+		maidFacade->enumerateCapsAll();
 		maidFacade->capValueChangeCallback(data);
 		break;
 	case kNkMAIDEvent_CapChangeValueOnly:

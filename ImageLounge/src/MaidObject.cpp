@@ -68,11 +68,13 @@ MaidObject* MaidObject::create(ULONG id, MaidObject* parent) {
 }
 
 /*!
- * Returns the capabilites as a vector
+ * Returns the capabilites as a vector (does not re-enumerate)
  * throws MaidError
  */
 std::vector<NkMAIDCapInfo> MaidObject::enumCapsVector() {
-	enumCaps();
+	if (!capArray) {
+		enumCaps();
+	}
 	return std::vector<NkMAIDCapInfo>(capArray.get(), capArray.get() + capCount);
 }
 
