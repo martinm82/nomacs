@@ -4586,7 +4586,14 @@ void DkCamControls::setCameraComboBoxValue(QComboBox* comboBox, std::function<bo
 		fallback = apertureCombo->currentIndex();
 	}
 
-	if (setCameraValue(index)) {
+	bool r;
+	try {
+		r = setCameraValue(index);
+	} catch (Maid::MaidError) {
+		r = false;
+	}
+
+	if (r) {
 		if (comboBox->currentIndex() != index) {
 			comboBox->setCurrentIndex(index);
 		}
