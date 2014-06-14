@@ -540,6 +540,10 @@ QString MaidFacade::increaseFilenameNumber(const QFileInfo& fileInfo) {
 	return filename;
 }
 
+QString MaidFacade::getCurrentSavePath() {
+	return QFileInfo(firstFilename).canonicalPath();
+}
+
 bool MaidFacade::toggleLiveView() {
 	int32_t lvStatus = 0;
 

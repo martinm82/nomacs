@@ -103,6 +103,7 @@ public:
 	NKERROR processMaidData(NKREF ref, LPVOID info, LPVOID data);
 	void progressCallbackUpdate(ULONG command, ULONG param, ULONG done, ULONG total);
 	void enumerateCapsAll();
+	QString getCurrentSavePath();
 
 public slots:
 	bool autoFocus();

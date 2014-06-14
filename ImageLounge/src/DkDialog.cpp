@@ -4111,6 +4111,16 @@ void DkCamControls::createLayout() {
 	acquireProgressBar->setVisible(false);
 	acquireProgressBar->setMinimum(0);
 
+	filePathWidget = new QWidget();
+	QLayout* filePathLayout = new QHBoxLayout();
+	filePathLabel = new QLabel();
+	filePathLabel->setObjectName("filePathLabel");
+	filePathLabel->setAccessibleName(tr("Current path"));
+	filePathLayout->addWidget(new QLabel(tr("Current path")));
+	filePathLayout->addWidget(filePathLabel);
+	filePathWidget->setLayout(filePathLayout);
+	filePathWidget->setVisible(false);
+
 	QWidget* exposureModeWidget = new QWidget();
 	exposureModeLayout = new QHBoxLayout();
 	QLabel* exposureModeLabel = new QLabel(tr("Exposure Mode"));
@@ -4173,6 +4183,7 @@ void DkCamControls::createLayout() {
 	mainLayout->addWidget(apertureWidget);
 	mainLayout->addWidget(isoWidget);
 	mainLayout->addWidget(shutterSpeedWidget);
+	mainLayout->addWidget(filePathWidget);
 	mainLayout->addLayout(buttonsLayout);
 	mainLayout->addLayout(connectionLayout);
 	mainGroup->setLayout(mainLayout);
@@ -4820,6 +4831,17 @@ void DkCamControls::onShootFinished() {
 	profilesGroup->setEnabled(true);
 	acquireProgressBar->setVisible(false);
 	emit statusChanged();
+
+	QString savePath = maidFacade->getCurrentSavePath();
+	if (savePath.isEmpty()) {
+		filePathWidget->setVisible(false);
+	} else {
+		//QString QFontMetricsF::elidedText ( const QString & text, Qt::TextElideMode mode, qreal width, int flags = 0 ) const
+		QFontMetricsF fontMetrics(filePathLabel->font());
+		filePathLabel->setText(fontMetrics.elidedText(savePath, Qt::TextElideMode::ElideLeft, exposureModeCombo->width()));
+		filePathLabel->setToolTip(savePath);
+		filePathWidget->setVisible(true);
+	}
 }
 
 void DkCamControls::onUpdateAcquireProgress(unsigned int done, unsigned int total) {

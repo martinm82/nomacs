@@ -1089,6 +1089,7 @@ protected:
 	DkViewPort* viewport;
 
 	QWidget* widget;
+	QWidget* filePathWidget;
 	QGroupBox* profilesGroup;
 	QGroupBox* mainGroup;
 	QBoxLayout* mainLayout;
@@ -1096,6 +1097,7 @@ protected:
 	QHBoxLayout* profilesLayout;
 	QLabel* lensAttachedLabel;
 	QLabel* autoIsoLabel;
+	QLabel* filePathLabel;
 	QComboBox* profilesCombo;
 	QComboBox* exposureModeCombo;
 	QComboBox* isoCombo;
