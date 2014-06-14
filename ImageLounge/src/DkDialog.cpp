@@ -5103,7 +5103,7 @@ void ConnectDeviceDialog::updateDevicesList(std::set<uint32_t> deviceIds) {
 
 		if (deviceIds.size() > 0) {
 			for (uint32_t deviceId : deviceIds) {
-				devicesListWidget->addItem(new DeviceListWidgetItem(QString("Device #%1").arg(deviceId), deviceId));
+				devicesListWidget->addItem(new DeviceListWidgetItem(QString("Nikon D4 #%1").arg(deviceId), deviceId));
 			}
 
 			devicesListWidget->item(0)->setSelected(true);
