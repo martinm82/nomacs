@@ -69,7 +69,8 @@ public:
 	// some callbacks are public because they have to be called from a function outside the class
 	std::function<void(unsigned long)> capValueChangeCallback;
 
-	void init();
+	bool init();
+	bool isInitialized();
 	void setCapValueChangeCallback(std::function<void(uint32_t)> capValueChangeCallback);
 	std::set<uint32_t> listDevices();
 	void openSource(ULONG id);
@@ -134,6 +135,7 @@ private:
 	NkMAIDFileInfo currentFileFileInfo;
 	bool allItemsAcquired;
 	bool currentlyAcquiringObjects;
+	bool initialized;
 	
 	//void closeChildren(std::unique_ptr<Maid::MaidObject> mo);
 	MaybeStringValues readPackedStringCap(ULONG capId);

@@ -18,13 +18,14 @@ using Maid::MaidUtil;
 using Maid::MaidObject;
 
 MaidFacade::MaidFacade(nmc::DkNoMacs* noMacs) 
-	: noMacs(noMacs), lensAttached(false), prevFileNumber(0), captureCount(0), allItemsAcquired(false), currentlyAcquiringObjects(false) {
+	: noMacs(noMacs), lensAttached(false), prevFileNumber(0), captureCount(0), allItemsAcquired(false), 
+	currentlyAcquiringObjects(false), initialized(false) {
 }
 
 /*!
  * throws InitError, MaidError
  */
-void MaidFacade::init() {
+bool MaidFacade::init() {
 	
 	try {
 		MaidUtil::getInstance().loadLibrary();
@@ -38,7 +39,7 @@ void MaidFacade::init() {
 		qDebug() << "MAID Module Object created";
 	} catch (...) {
 		qDebug() << "Could not initialize MAID (whatever that is)";
-		return;
+		return false;
 	}
 	
 	// set callbacks
@@ -47,6 +48,13 @@ void MaidFacade::init() {
 	// connect future watchers
 	connect(&shootFutureWatcher, SIGNAL(finished()), this, SLOT(shootFinished()));
 	connect(&acquireFutureWatcher, SIGNAL(finished()), this, SLOT(acquireItemObjectsFinished()));
+
+	initialized = true;
+	return true;
+}
+
+bool MaidFacade::isInitialized() {
+	return initialized;
 }
 
 void MaidFacade::setCapValueChangeCallback(std::function<void(uint32_t)> capValueChangeCallback) {

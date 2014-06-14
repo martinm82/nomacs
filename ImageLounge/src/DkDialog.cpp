@@ -4422,8 +4422,12 @@ void DkCamControls::closeDeviceAndSetState() {
 }
 
 void DkCamControls::stopActivities() {
-	stateUpdateTimer->stop();
-	liveViewTimer->stop();
+	if (stateUpdateTimer) {
+		stateUpdateTimer->stop();
+	}
+	if (liveViewTimer) {
+		liveViewTimer->stop();
+	}
 }
 
 void DkCamControls::showEvent(QShowEvent *event) {
