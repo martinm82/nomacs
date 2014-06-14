@@ -490,7 +490,7 @@ void MaidFacade::acquireItemObjectsFinished() {
 			firstFilename = filename;
 		} else {
 			// save 
-			QFileInfo newFilenameInfo = QFileInfo(firstFilenameInfo.baseName() + "." + tempFilenameInfo.suffix());
+			QFileInfo newFilenameInfo = QFileInfo(firstFilenameInfo.canonicalPath() + "/" + firstFilenameInfo.baseName() + "." + tempFilenameInfo.suffix());
 			filename = increaseFilenameNumber(newFilenameInfo);
 		}
 		qDebug() << "saving file: " << filename;
@@ -516,6 +516,28 @@ void MaidFacade::acquireItemObjectsFinished() {
 	// acquire next item object
 	QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
 	acquireFutureWatcher.setFuture(acquireFuture);
+}
+
+/**
+ * For image0.jpg, this will return image1.jpg, etc.
+ */
+QString MaidFacade::increaseFilenameNumber(const QFileInfo& fileInfo) {
+	std::ifstream testFileIn;
+	QString basePath = fileInfo.canonicalPath() + "/" + fileInfo.baseName();
+	QString filename = "";
+	// test file names
+	while (true) {
+		filename = basePath + "_" + QString::number(++prevFileNumber) + "." + fileInfo.completeSuffix();
+		testFileIn.open(filename.toStdString());
+		if (!testFileIn.good()) {
+			testFileIn.close();
+			break;
+		}
+
+		testFileIn.close();
+	}
+
+	return filename;
 }
 
 bool MaidFacade::toggleLiveView() {
@@ -688,28 +710,6 @@ std::string MaidFacade::makePictureFilename() {
 	filenameStream << prefix << "." << ext;
 
 	return filenameStream.str();
-}
-
-/**
- * For image0.jpg, this will return image1.jpg, etc.
- */
-QString MaidFacade::increaseFilenameNumber(const QFileInfo& fileInfo) {
-	std::ifstream testFileIn;
-	QString basePath = fileInfo.filePath().remove("." + fileInfo.completeSuffix());
-	QString filename = "";
-	// test file names
-	while (true) {
-		filename = basePath + "_" + QString::number(++prevFileNumber) + "." + fileInfo.completeSuffix();
-		testFileIn.open(filename.toStdString());
-		if (!testFileIn.good()) {
-			testFileIn.close();
-			break;
-		}
-
-		testFileIn.close();
-	}
-
-	return filename;
 }
 
 void MaidFacade::setCurrentFileData(DataProcData* fileData, void* info) {
