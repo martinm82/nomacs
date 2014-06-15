@@ -4450,11 +4450,23 @@ void DkCamControls::closeEvent(QCloseEvent* event) {
 	//writeSettings();
 }
 
+void DkCamControls::resizeEvent(QResizeEvent *event) {
+	updateWidgetSize();
+	QWidget::resizeEvent(event);
+}
+
 void DkCamControls::setVisible(bool visible) {
 	if (!visible) {
 		stopActivities();
 	}
 	QDockWidget::setVisible(visible);
+}
+
+void DkCamControls::updateWidgetSize() {
+	QString savePath = maidFacade->getCurrentSavePath();
+	QFontMetricsF fontMetrics(filePathLabel->font());
+	filePathLabel->setText(fontMetrics.elidedText(savePath, Qt::TextElideMode::ElideLeft, exposureModeCombo->width()));
+	filePathLabel->setToolTip(savePath);
 }
 
 void DkCamControls::updateLensAttachedLabel(bool attached) {
@@ -4836,10 +4848,7 @@ void DkCamControls::onShootFinished() {
 	if (savePath.isEmpty()) {
 		filePathWidget->setVisible(false);
 	} else {
-		//QString QFontMetricsF::elidedText ( const QString & text, Qt::TextElideMode mode, qreal width, int flags = 0 ) const
-		QFontMetricsF fontMetrics(filePathLabel->font());
-		filePathLabel->setText(fontMetrics.elidedText(savePath, Qt::TextElideMode::ElideLeft, exposureModeCombo->width()));
-		filePathLabel->setToolTip(savePath);
+		updateWidgetSize();
 		filePathWidget->setVisible(true);
 	}
 }

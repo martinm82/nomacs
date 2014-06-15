@@ -1045,6 +1045,7 @@ protected:
 
 	void showEvent(QShowEvent *event);
 	void closeEvent(QCloseEvent *event);
+	void resizeEvent(QResizeEvent *event);
 
 	void createLayout();
 	void updateLensAttachedLabel(bool attached);
@@ -1068,6 +1069,7 @@ protected:
 	void writeProfiles();
 	void readProfiles();
 	void addProfilesComboItem(const Profile& p);
+	void updateWidgetSize();
 
 	static const int stateRefreshInterval;
 	static const int liveViewImageInterval;
