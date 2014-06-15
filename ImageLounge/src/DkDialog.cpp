@@ -4525,7 +4525,7 @@ void DkCamControls::updateUiValues() {
 
 	if (liveViewActive) {
 		shootAfButton->setEnabled(false);
-		afButton->setEnabled(false);
+		afButton->setEnabled(true);
 	} else {
 		mainGroup->setEnabled(connected);
 		profilesGroup->setEnabled(connected);

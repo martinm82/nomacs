@@ -3366,7 +3366,7 @@ void DkNoMacs::updateCameraStatus() {
 	if (camControls->isLiveViewActive()) {
 		cameraActions[menu_camera_connect]->setEnabled(false);
 		cameraActions[menu_camera_liveview]->setText(tr("Stop Live View"));
-		cameraActions[menu_camera_af]->setEnabled(false);
+		cameraActions[menu_camera_af]->setEnabled(true);
 		cameraActions[menu_camera_shoot]->setEnabled(true);
 		cameraActions[menu_camera_shoot_af]->setEnabled(false);
 	} else {

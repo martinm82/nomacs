@@ -364,11 +364,15 @@ bool MaidFacade::autoFocus() {
 	complData->count = &captureCount;
 
 	if (!shootFutureWatcher.isRunning()) {
-		// start shooting (threaded)
-		QFuture<int> shootFuture = QtConcurrent::run(sourceObject.get(), &MaidObject::capStart, cap, (LPNKFUNC) completionProc, (NKREF) complData);
-		shootFutureWatcher.setFuture(shootFuture);
+		if (!isLiveViewActive()) {
+			// start shooting (threaded)
+			QFuture<int> shootFuture = QtConcurrent::run(sourceObject.get(), &MaidObject::capStart, cap, (LPNKFUNC) completionProc, (NKREF) complData);
+			shootFutureWatcher.setFuture(shootFuture);
 
-		return true;
+			return true;
+		} else { // do contrast af in live view
+			sourceObject->capSet(kNkMAIDCapability_ContrastAF, kNkMAIDDataType_Unsigned, (NKPARAM) kNkMAIDContrastAF_Start);
+		}
 	}
 
 	return false;
@@ -377,7 +381,7 @@ bool MaidFacade::autoFocus() {
 void MaidFacade::shootFinished() {
 	int opRet = shootFutureWatcher.result();
 	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
-		qDebug() << "Error executing capture capability";
+		qDebug() << "Error executing capture or autofocus capability";
 		return;// return false;
 	}
 
