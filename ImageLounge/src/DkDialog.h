@@ -1032,6 +1032,7 @@ protected slots:
 	void saveProfile();
 	void deleteProfile();
 	void newProfile();
+	void onSaveNamesCheckBoxChanged(int state);
 
 protected:
 	struct Profile {
@@ -1094,12 +1095,15 @@ protected:
 	QWidget* filePathWidget;
 	QGroupBox* profilesGroup;
 	QGroupBox* mainGroup;
+	QGroupBox* optionsGroup;
 	QBoxLayout* mainLayout;
+	QBoxLayout* optionsLayout;
 	QBoxLayout* outerLayout;
 	QHBoxLayout* profilesLayout;
 	QLabel* lensAttachedLabel;
 	QLabel* autoIsoLabel;
 	QLabel* filePathLabel;
+	QCheckBox* saveNamesCheckBox;
 	QComboBox* profilesCombo;
 	QComboBox* exposureModeCombo;
 	QComboBox* isoCombo;

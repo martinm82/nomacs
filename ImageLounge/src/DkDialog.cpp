@@ -4111,16 +4111,6 @@ void DkCamControls::createLayout() {
 	acquireProgressBar->setVisible(false);
 	acquireProgressBar->setMinimum(0);
 
-	filePathWidget = new QWidget();
-	QLayout* filePathLayout = new QHBoxLayout();
-	filePathLabel = new QLabel();
-	filePathLabel->setObjectName("filePathLabel");
-	filePathLabel->setAccessibleName(tr("Current path"));
-	filePathLayout->addWidget(new QLabel(tr("Current path")));
-	filePathLayout->addWidget(filePathLabel);
-	filePathWidget->setLayout(filePathLayout);
-	filePathWidget->setVisible(false);
-
 	QWidget* exposureModeWidget = new QWidget();
 	exposureModeLayout = new QHBoxLayout();
 	QLabel* exposureModeLabel = new QLabel(tr("Exposure Mode"));
@@ -4183,7 +4173,6 @@ void DkCamControls::createLayout() {
 	mainLayout->addWidget(apertureWidget);
 	mainLayout->addWidget(isoWidget);
 	mainLayout->addWidget(shutterSpeedWidget);
-	mainLayout->addWidget(filePathWidget);
 	mainLayout->addLayout(buttonsLayout);
 	mainLayout->addLayout(connectionLayout);
 	mainGroup->setLayout(mainLayout);
@@ -4220,9 +4209,35 @@ void DkCamControls::createLayout() {
 	profilesLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::Minimum));
 	profilesGroup->setLayout(profilesLayout);
 
+	// options group
+	
+	saveNamesCheckBox = new QCheckBox("Name files automatically");
+	saveNamesCheckBox->setChecked(true);
+	saveNamesCheckBox->setEnabled(false);
+
+	filePathWidget = new QWidget();
+	QLayout* filePathLayout = new QHBoxLayout();
+	filePathLabel = new QLabel();
+	filePathLabel->setObjectName("filePathLabel");
+	filePathLabel->setAccessibleName(tr("Save path"));
+	filePathLayout->addWidget(new QLabel(tr("Save path")));
+	filePathLayout->addWidget(filePathLabel);
+	filePathWidget->setLayout(filePathLayout);
+	filePathWidget->setEnabled(false);
+
+	optionsGroup = new QGroupBox(tr("Options"));
+	optionsGroup->setFlat(true);
+	optionsLayout = new QVBoxLayout();
+	optionsLayout->addWidget(saveNamesCheckBox);
+	optionsLayout->addWidget(filePathWidget);
+	optionsGroup->setLayout(optionsLayout);
+
+	// .
+
 	outerLayout = new QVBoxLayout();
 	outerLayout->addWidget(profilesGroup);
 	outerLayout->addWidget(mainGroup);
+	outerLayout->addWidget(optionsGroup);
 	outerLayout->addSpacerItem(boxFillerV);
 
 	widget->setLayout(outerLayout);
@@ -4239,6 +4254,7 @@ void DkCamControls::createLayout() {
 	connect(newProfileButton, SIGNAL(clicked()), this, SLOT(newProfile()));
 	connect(deleteProfileButton, SIGNAL(clicked()), this, SLOT(deleteProfile()));
 	connect(profilesCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(onProfilesComboIndexChanged(int)));
+	connect(saveNamesCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onSaveNamesCheckBoxChanged(int)));
 	connect(this, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(arrangeLayout(Qt::DockWidgetArea)));
 	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
 	// maidFacade signals
@@ -4318,6 +4334,10 @@ void DkCamControls::onOpenDeviceError() {
 	dialog.exec();
 
 	//qDebug() << tr("The source could not be opened");
+}
+
+void DkCamControls::onSaveNamesCheckBoxChanged(int state) {
+	maidFacade->setAutoSaveNaming(state != 0);
 }
 
 void DkCamControls::setConnected(bool newValue) {
@@ -4464,9 +4484,13 @@ void DkCamControls::setVisible(bool visible) {
 
 void DkCamControls::updateWidgetSize() {
 	QString savePath = maidFacade->getCurrentSavePath();
-	QFontMetricsF fontMetrics(filePathLabel->font());
-	filePathLabel->setText(fontMetrics.elidedText(savePath, Qt::TextElideMode::ElideLeft, exposureModeCombo->width()));
-	filePathLabel->setToolTip(savePath);
+	if (savePath.isEmpty()) {
+		filePathLabel->setText(tr("-"));
+	} else {
+		QFontMetricsF fontMetrics(filePathLabel->font());
+		filePathLabel->setText(fontMetrics.elidedText(savePath, Qt::TextElideMode::ElideLeft, exposureModeCombo->width()));
+		filePathLabel->setToolTip(savePath);
+	}
 }
 
 void DkCamControls::updateLensAttachedLabel(bool attached) {
@@ -4495,6 +4519,9 @@ void DkCamControls::updateUiValues() {
 	updateExposureMode();
 	updateExposureModeDependentUiValues();
 	updateAutoIsoLabel();
+
+	filePathWidget->setEnabled(connected);
+	saveNamesCheckBox->setEnabled(connected);
 
 	if (liveViewActive) {
 		shootAfButton->setEnabled(false);
@@ -4845,12 +4872,8 @@ void DkCamControls::onShootFinished() {
 	emit statusChanged();
 
 	QString savePath = maidFacade->getCurrentSavePath();
-	if (savePath.isEmpty()) {
-		filePathWidget->setVisible(false);
-	} else {
-		updateWidgetSize();
-		filePathWidget->setVisible(true);
-	}
+	updateWidgetSize();
+	filePathWidget->setEnabled(!savePath.isEmpty());
 }
 
 void DkCamControls::onUpdateAcquireProgress(unsigned int done, unsigned int total) {

@@ -104,6 +104,7 @@ public:
 	void progressCallbackUpdate(ULONG command, ULONG param, ULONG done, ULONG total);
 	void enumerateCapsAll();
 	QString getCurrentSavePath();
+	void setAutoSaveNaming(bool);
 
 public slots:
 	bool autoFocus();
@@ -138,6 +139,7 @@ private:
 	bool allItemsAcquired;
 	bool currentlyAcquiringObjects;
 	bool initialized;
+	bool autoSaveNaming;
 	
 	//void closeChildren(std::unique_ptr<Maid::MaidObject> mo);
 	MaybeStringValues readPackedStringCap(ULONG capId);

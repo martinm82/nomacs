@@ -467,6 +467,10 @@ void MaidFacade::startAcquireItemObjects() {
 	}
 }
 
+void MaidFacade::setAutoSaveNaming(bool a) {
+	autoSaveNaming = a;
+}
+
 void MaidFacade::acquireItemObjectsFinished() {
 	if (allItemsAcquired) {
 		allItemsAcquired = false;
@@ -479,8 +483,8 @@ void MaidFacade::acquireItemObjectsFinished() {
 		QFileInfo tempFilenameInfo = QFileInfo(QString::fromStdString(makePictureFilename()));
 		QFileInfo firstFilenameInfo = QFileInfo(firstFilename);
 
-		// if it is the first picture or the file type has changed
-		if (firstFilename.isEmpty()) {
+		// if it is the first picture or the file type has changed or not auto save naming
+		if (firstFilename.isEmpty() || !autoSaveNaming) {
 			filename = noMacs->getCapturedFileName(tempFilenameInfo);
 			if (filename.isEmpty()) {
 				//return kNkMAIDResult_NoError;
@@ -541,7 +545,11 @@ QString MaidFacade::increaseFilenameNumber(const QFileInfo& fileInfo) {
 }
 
 QString MaidFacade::getCurrentSavePath() {
-	return QFileInfo(firstFilename).canonicalPath();
+	if (firstFilename.isEmpty()) {
+		return QString();
+	} else {
+		return QFileInfo(firstFilename).canonicalPath();
+	}
 }
 
 bool MaidFacade::toggleLiveView() {
