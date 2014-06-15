@@ -1104,6 +1104,7 @@ protected:
 	QLabel* autoIsoLabel;
 	QLabel* filePathLabel;
 	QCheckBox* saveNamesCheckBox;
+	QCheckBox* openImagesCheckBox;
 	QComboBox* profilesCombo;
 	QComboBox* exposureModeCombo;
 	QComboBox* isoCombo;

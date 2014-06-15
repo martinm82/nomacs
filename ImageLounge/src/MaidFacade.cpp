@@ -515,6 +515,8 @@ void MaidFacade::acquireItemObjectsFinished() {
 		qDebug() << "writing " << currentFileFileInfo.ulTotalLength << " bytes";
 		outFile.write(currentFileData->buffer, currentFileFileInfo.ulTotalLength);
 		outFile.close();
+
+		lastFileInfo = QFileInfo(filename);
 	}();
 
 	delete[] currentFileData->buffer;
@@ -726,6 +728,10 @@ std::string MaidFacade::makePictureFilename() {
 	filenameStream << prefix << "." << ext;
 
 	return filenameStream.str();
+}
+
+QFileInfo MaidFacade::getLastFileInfo() {
+	return lastFileInfo;
 }
 
 void MaidFacade::setCurrentFileData(DataProcData* fileData, void* info) {

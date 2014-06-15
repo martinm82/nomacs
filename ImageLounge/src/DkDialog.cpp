@@ -4211,10 +4211,6 @@ void DkCamControls::createLayout() {
 
 	// options group
 	
-	saveNamesCheckBox = new QCheckBox("Name files automatically");
-	saveNamesCheckBox->setChecked(true);
-	saveNamesCheckBox->setEnabled(false);
-
 	filePathWidget = new QWidget();
 	QLayout* filePathLayout = new QHBoxLayout();
 	filePathLabel = new QLabel();
@@ -4225,11 +4221,20 @@ void DkCamControls::createLayout() {
 	filePathWidget->setLayout(filePathLayout);
 	filePathWidget->setEnabled(false);
 
+	saveNamesCheckBox = new QCheckBox(tr("Name files automatically"));
+	saveNamesCheckBox->setChecked(true);
+	saveNamesCheckBox->setEnabled(false);
+
+	openImagesCheckBox = new QCheckBox(tr("Load and display images after shooting"));
+	openImagesCheckBox->setChecked(true);
+	openImagesCheckBox->setEnabled(false);
+
 	optionsGroup = new QGroupBox(tr("Options"));
 	optionsGroup->setFlat(true);
 	optionsLayout = new QVBoxLayout();
-	optionsLayout->addWidget(saveNamesCheckBox);
 	optionsLayout->addWidget(filePathWidget);
+	optionsLayout->addWidget(saveNamesCheckBox);
+	optionsLayout->addWidget(openImagesCheckBox);
 	optionsGroup->setLayout(optionsLayout);
 
 	// .
@@ -4522,6 +4527,7 @@ void DkCamControls::updateUiValues() {
 
 	filePathWidget->setEnabled(connected);
 	saveNamesCheckBox->setEnabled(connected);
+	openImagesCheckBox->setEnabled(connected);
 
 	if (liveViewActive) {
 		shootAfButton->setEnabled(false);
@@ -4874,6 +4880,12 @@ void DkCamControls::onShootFinished() {
 	QString savePath = maidFacade->getCurrentSavePath();
 	updateWidgetSize();
 	filePathWidget->setEnabled(!savePath.isEmpty());
+
+	// maybe load image
+	if (openImagesCheckBox->isChecked()) {
+		DkImageLoader* loader = viewport->getImageLoader();
+		loader->loadFile(maidFacade->getLastFileInfo());
+	}
 }
 
 void DkCamControls::onUpdateAcquireProgress(unsigned int done, unsigned int total) {

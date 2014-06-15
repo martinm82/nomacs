@@ -105,6 +105,7 @@ public:
 	void enumerateCapsAll();
 	QString getCurrentSavePath();
 	void setAutoSaveNaming(bool);
+	QFileInfo getLastFileInfo();
 
 public slots:
 	bool autoFocus();
@@ -128,6 +129,7 @@ private:
 	MaybeUnsignedValues exposureMode;
 	QMutex mutex;
 	bool lensAttached;
+	QFileInfo lastFileInfo;
 	QString firstFilename;
 	unsigned int prevFileNumber;
 	QFutureWatcher<int> shootFutureWatcher;
