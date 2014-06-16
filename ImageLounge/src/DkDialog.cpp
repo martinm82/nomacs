@@ -4916,7 +4916,7 @@ void DkCamControls::onLiveView() {
 
 void DkCamControls::loadProfile() {
 	const Profile& p = profiles.at(profilesCombo->currentIndex());
-	const QString unequalItemsText = tr("Could not apply profile because a value from the profile was not available (wrong camera model?)");
+	const QString unequalItemsText = tr("Could not apply profile because a value from the profile was not available");
 	QString errorText;
 
 	bool lensAttached = maidFacade->isLensAttached();
