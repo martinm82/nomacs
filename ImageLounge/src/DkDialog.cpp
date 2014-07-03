@@ -4226,10 +4226,10 @@ void DkCamControls::createLayout() {
 	deleteProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogDiscardButton));
 	deleteProfileButton->adjustSize();
 	deleteProfileButton->setToolTip(tr("Delete the selected profile"));
-	loadProfileButton = new QPushButton();
-	loadProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
-	loadProfileButton->adjustSize();
-	loadProfileButton->setToolTip(tr("Load and apply the selected profile"));
+	//loadProfileButton = new QPushButton();
+	//loadProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogApplyButton));
+	//loadProfileButton->adjustSize();
+	//loadProfileButton->setToolTip(tr("Load and apply the selected profile"));
 	saveProfileButton = new QPushButton();
 	saveProfileButton->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogSaveButton));
 	saveProfileButton->adjustSize();
@@ -4239,7 +4239,7 @@ void DkCamControls::createLayout() {
 	profilesGroup->setFlat(true);
 	profilesLayout = new QHBoxLayout();
 	profilesLayout->addWidget(profilesCombo);
-	profilesLayout->addWidget(loadProfileButton);
+	//profilesLayout->addWidget(loadProfileButton);
 	profilesLayout->addSpacerItem(new QSpacerItem(10, 1, QSizePolicy::Minimum, QSizePolicy::Minimum));
 	profilesLayout->addWidget(saveProfileButton);
 	profilesLayout->addWidget(newProfileButton);
@@ -4292,7 +4292,7 @@ void DkCamControls::createLayout() {
 	connect(afButton, SIGNAL(clicked()), this, SLOT(onAutoFocus()));
 	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShoot()));
 	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAf()));
-	connect(loadProfileButton, SIGNAL(clicked()), this, SLOT(loadProfile()));
+	//connect(loadProfileButton, SIGNAL(clicked()), this, SLOT(loadProfile()));
 	connect(saveProfileButton, SIGNAL(clicked()), this, SLOT(saveProfile()));
 	connect(newProfileButton, SIGNAL(clicked()), this, SLOT(newProfile()));
 	connect(deleteProfileButton, SIGNAL(clicked()), this, SLOT(deleteProfile()));
@@ -4859,14 +4859,16 @@ void DkCamControls::updateExposureMode() {
 
 void DkCamControls::updateProfilesUi() {
 	if (profilesCombo->currentIndex() == -1 || profilesCombo->count() == 0) {
-		loadProfileButton->setEnabled(false);
+		//loadProfileButton->setEnabled(false);
 		saveProfileButton->setEnabled(false);
 		deleteProfileButton->setEnabled(false);
 	} else {
-		loadProfileButton->setEnabled(true);
+		//loadProfileButton->setEnabled(true);
 		saveProfileButton->setEnabled(true);
 		deleteProfileButton->setEnabled(true);
 	}
+	loadProfile();
+
 	newProfileButton->setEnabled(true);
 }
 
@@ -4922,7 +4924,7 @@ void DkCamControls::onShootFinished() {
 	// maybe load image
 	if (openImagesCheckBox->isChecked()) {
 		DkImageLoader* loader = viewport->getImageLoader();
-		loader->loadFile(maidFacade->getLastFileInfo());
+		loader->load(maidFacade->getLastFileInfo());
 	}
 }
 
@@ -4953,9 +4955,16 @@ void DkCamControls::onLiveView() {
 // profiles
 
 void DkCamControls::loadProfile() {
+
+	if (profilesCombo->currentIndex() >= profiles.size() || profilesCombo->currentIndex() < 0)
+		return;
+
 	const Profile& p = profiles.at(profilesCombo->currentIndex());
 	const QString unequalItemsText = tr("Could not apply profile because a value from the profile was not available");
 	QString errorText;
+
+	if (!maidFacade->isSourceAlive())
+		return;
 
 	bool lensAttached = maidFacade->isLensAttached();
 	if (p.lensAttached != lensAttached || exposureModeCombo->findText(p.exposureMode) == -1) {
