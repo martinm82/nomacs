@@ -18,42 +18,43 @@ using Maid::MaidUtil;
 using Maid::MaidObject;
 
 MaidFacade::MaidFacade(nmc::DkNoMacs* noMacs) 
-	: noMacs(noMacs), lensAttached(false), prevFileNumber(0), captureCount(0), allItemsAcquired(false), currentlyAcquiringObjects(false) {
+	: noMacs(noMacs), lensAttached(false), prevFileNumber(0), captureCount(0), allItemsAcquired(false), 
+	currentlyAcquiringObjects(false), initialized(false) {
 }
 
 /*!
  * throws InitError, MaidError
  */
-void MaidFacade::init() {
+bool MaidFacade::init() {
 	
 	try {
 		MaidUtil::getInstance().loadLibrary();
 		qDebug() << "Loaded MAID library";
 		MaidUtil::getInstance().initMAID();
 		qDebug() << "Initialized MAID";
-	} catch(...) {
-		qDebug() << "Could not initialize MAID (whatever that is)";
-		return;
-	}
 
-	// create module object
-	moduleObject.reset(MaidObject::create(0, nullptr));
-	moduleObject->enumCaps();
-	qDebug() << "MAID Module Object created";
+		// create module object
+		moduleObject.reset(MaidObject::create(0, nullptr));
+		moduleObject->enumCaps();
+		qDebug() << "MAID Module Object created";
+	} catch (...) {
+		qDebug() << "Could not initialize MAID (whatever that is)";
+		return false;
+	}
+	
 	// set callbacks
 	moduleObject->setEventCallback(this, eventProc);
-	//moduleObject->setProgressCallback(progressProc);
-	//moduleObject->setUIRequestCallback(uiRequestProc);
-	// set ModuleMode
-	//if (moduleObject->hasCapOperation(kNkMAIDCapability_ModuleMode, kNkMAIDCapOperation_Set)) {
-	//	moduleObject->capSet(kNkMAIDCapability_ModuleMode, kNkMAIDDataType_Unsigned, (NKPARAM) kNkMAIDModuleMode_Controller);
-	//} else {
-	//	qDebug() << "kNkMAIDCapability_ModuleMode can not be set";
-	//}
 
 	// connect future watchers
 	connect(&shootFutureWatcher, SIGNAL(finished()), this, SLOT(shootFinished()));
 	connect(&acquireFutureWatcher, SIGNAL(finished()), this, SLOT(acquireItemObjectsFinished()));
+
+	initialized = true;
+	return true;
+}
+
+bool MaidFacade::isInitialized() {
+	return initialized;
 }
 
 void MaidFacade::setCapValueChangeCallback(std::function<void(uint32_t)> capValueChangeCallback) {
@@ -72,13 +73,14 @@ std::set<uint32_t> MaidFacade::listDevices() {
  * throws OpenCloseObjectError
  */
 void MaidFacade::openSource(ULONG id) {
-	//mutex.lock();
 	sourceObject.reset(MaidObject::create(id, moduleObject.get()));
 	sourceObject->setEventCallback(this, eventProc);
 	//sourceObject->setProgressCallback(progressProc);
-	//mutex.unlock();
 }
 
+/*!
+ * throws MaidError
+ */
 bool MaidFacade::checkCameraType() {
 	// the only currently supported source is a Nikon D4
 	// read the camera type
@@ -268,6 +270,15 @@ bool MaidFacade::isLensAttached() {
 	return lensAttached;
 }
 
+/*!
+ * throws MaidError
+ */
+bool MaidFacade::isAutoIso() {
+	bool autoIso;
+	sourceObject->capGet(kNkMAIDCapability_IsoControl, kNkMAIDDataType_BooleanPtr, (NKPARAM) &autoIso);
+	return autoIso;
+}
+
 void MaidFacade::closeModule() {
 	if (moduleObject) {
 		moduleObject->closeObject();
@@ -295,6 +306,9 @@ void MaidFacade::closeEverything() {
 	closeModule();
 }
 
+/*!
+ * throws MaidError
+ */
 bool MaidFacade::isSourceAlive() {
 	if (sourceObject) {
 		return sourceObject->isAlive();
@@ -311,6 +325,9 @@ void MaidFacade::sourceIdleLoop(ULONG* count) {
 	sourceObject->async();
 }
 
+/**
+ * throws MaidError
+ */
 bool MaidFacade::shoot(bool withAf) {
 	captureCount = 0;
 	NkMAIDCapInfo capInfo;
@@ -323,7 +340,6 @@ bool MaidFacade::shoot(bool withAf) {
 	if (withAf) {
 		cap = kNkMAIDCapability_AFCapture;
 	}
-	//int opRet = sourceObject->capStart(cap, completionProc, (NKREF) complData);
 
 	if (!shootFutureWatcher.isRunning()) {
 		// start shooting (threaded)
@@ -336,15 +352,41 @@ bool MaidFacade::shoot(bool withAf) {
 	return false;
 }
 
+/**
+ * AutoFocus is treated like shoot because it does the same kind of operation
+ * throws MaidError
+ */
+bool MaidFacade::autoFocus() {
+	captureCount = 0;
+	unsigned long cap = kNkMAIDCapability_AutoFocus;
+
+	CompletionProcData* complData = new CompletionProcData();
+	complData->count = &captureCount;
+
+	if (!shootFutureWatcher.isRunning()) {
+		if (!isLiveViewActive()) {
+			// start shooting (threaded)
+			QFuture<int> shootFuture = QtConcurrent::run(sourceObject.get(), &MaidObject::capStart, cap, (LPNKFUNC) completionProc, (NKREF) complData);
+			shootFutureWatcher.setFuture(shootFuture);
+
+			return true;
+		} else { // do contrast af in live view
+			sourceObject->capSet(kNkMAIDCapability_ContrastAF, kNkMAIDDataType_Unsigned, (NKPARAM) kNkMAIDContrastAF_Start);
+		}
+	}
+
+	return false;
+}
+
 void MaidFacade::shootFinished() {
 	int opRet = shootFutureWatcher.result();
 	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
-		qDebug() << "Error executing capture capability";
+		qDebug() << "Error executing capture or autofocus capability";
 		return;// return false;
 	}
 
 	// start acquiring the pictures (threaded)
-	sourceIdleLoop(&captureCount);
+	//sourceIdleLoop(&captureCount);
 }
 
 bool MaidFacade::acquireItemObjects() {
@@ -355,63 +397,67 @@ bool MaidFacade::acquireItemObjects() {
 
 	// acquire the _next_ item object
 
-	std::vector<ULONG> itemIds = sourceObject->getChildren();
-	if (itemIds.size() <= 0) {
-		qDebug() << "No item objects left";
+	try {
+		std::vector<ULONG> itemIds = sourceObject->getChildren();
+		if (itemIds.size() <= 0) {
+			qDebug() << "No item objects left";
 
-		emit shootAndAcquireFinished();
-		allItemsAcquired = true;
+			emit shootAndAcquireFinished();
+			allItemsAcquired = true;
 
-		return true;
+			return true;
+		}
+
+		// open the item object
+		std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get())); // we always choose the one at pos 0
+		if (!itemObject) {
+			qDebug() << "Item object #0 could not be opened!";
+			return false;
+		}
+
+		itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
+		ULONG dataTypes;
+		itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
+
+		std::unique_ptr<MaidObject> dataObject;
+
+		if (dataTypes & kNkMAIDDataObjType_Image) {
+			dataObject.reset(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
+		} else if (dataTypes & kNkMAIDDataObjType_File) {
+			dataObject.reset(MaidObject::create(kNkMAIDDataObjType_File, itemObject.get()));
+		} else {
+			return false;
+		}
+
+		if (!dataObject) {
+			qDebug() << "Data object could not be opened!";
+			return false;
+		}
+
+		DataProcData* dataRef = new DataProcData(this);
+		dataRef->id = dataObject->getID();
+
+		ProgressProcData* progressRef = new ProgressProcData(this);
+
+		ULONG acquireCount = 0;
+		complData = new CompletionProcData();
+		complData->count = &acquireCount;
+		complData->data = dataRef;
+
+		dataObject->setDataCallback((NKREF) dataRef, dataProc);
+		dataObject->setProgressCallback((NKREF) progressRef, progressProc);
+		int opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
+		if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
+			qDebug() << "Error acquiring data";
+			return false;
+		}
+
+		sourceIdleLoop(&acquireCount);
+
+		dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
+	} catch (Maid::MaidError) {
+		qDebug() << "something went wrong in acquireItemObjects";
 	}
-
-	// open the item object
-	std::unique_ptr<MaidObject> itemObject(MaidObject::create(itemIds.at(0), sourceObject.get())); // we always choose the one at pos 0
-	if (!itemObject) {
-		qDebug() << "Item object #0 could not be opened!";
-		return false;
-	}
-
-	itemObject->getCapInfo(kNkMAIDCapability_DataTypes, &capInfo);
-	ULONG dataTypes;
-	itemObject->capGet(kNkMAIDCapability_DataTypes, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &dataTypes);
-
-	std::unique_ptr<MaidObject> dataObject;
-
-	if (dataTypes & kNkMAIDDataObjType_Image) {
-		dataObject.reset(MaidObject::create(kNkMAIDDataObjType_Image, itemObject.get()));
-	} else if (dataTypes & kNkMAIDDataObjType_File) {
-		dataObject.reset(MaidObject::create(kNkMAIDDataObjType_File, itemObject.get()));
-	} else {
-		return false;
-	}
-
-	if (!dataObject) {
-		qDebug() << "Data object could not be opened!";
-		return false;
-	}
-
-	DataProcData* dataRef = new DataProcData(this);
-	dataRef->id = dataObject->getID();
-
-	ProgressProcData* progressRef = new ProgressProcData(this);
-
-	ULONG acquireCount = 0;
-	complData = new CompletionProcData();
-	complData->count = &acquireCount;
-	complData->data = dataRef;
-
-	dataObject->setDataCallback((NKREF) dataRef, dataProc);
-	dataObject->setProgressCallback((NKREF) progressRef, progressProc);
-	int opRet = dataObject->capStart(kNkMAIDCapability_Acquire, completionProc, (NKREF) complData);
-	if (opRet != kNkMAIDResult_NoError && opRet != kNkMAIDResult_Pending) {
-		qDebug() << "Error acquiring data";
-		return false;
-	}
-
-	sourceIdleLoop(&acquireCount);
-
-	dataObject->setDataCallback((NKREF) nullptr, (LPMAIDDataProc) nullptr);
 
 	return true;
 }
@@ -423,6 +469,10 @@ void MaidFacade::startAcquireItemObjects() {
 		QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
 		acquireFutureWatcher.setFuture(acquireFuture);
 	}
+}
+
+void MaidFacade::setAutoSaveNaming(bool a) {
+	autoSaveNaming = a;
 }
 
 void MaidFacade::acquireItemObjectsFinished() {
@@ -437,8 +487,8 @@ void MaidFacade::acquireItemObjectsFinished() {
 		QFileInfo tempFilenameInfo = QFileInfo(QString::fromStdString(makePictureFilename()));
 		QFileInfo firstFilenameInfo = QFileInfo(firstFilename);
 
-		// if it is the first picture or the file type has changed
-		if (firstFilename.isEmpty()) {
+		// if it is the first picture or the file type has changed or not auto save naming
+		if (firstFilename.isEmpty() || !autoSaveNaming) {
 			filename = noMacs->getCapturedFileName(tempFilenameInfo);
 			if (filename.isEmpty()) {
 				//return kNkMAIDResult_NoError;
@@ -448,7 +498,7 @@ void MaidFacade::acquireItemObjectsFinished() {
 			firstFilename = filename;
 		} else {
 			// save 
-			QFileInfo newFilenameInfo = QFileInfo(firstFilenameInfo.baseName() + "." + tempFilenameInfo.suffix());
+			QFileInfo newFilenameInfo = QFileInfo(firstFilenameInfo.canonicalPath() + "/" + firstFilenameInfo.baseName() + "." + tempFilenameInfo.suffix());
 			filename = increaseFilenameNumber(newFilenameInfo);
 		}
 		qDebug() << "saving file: " << filename;
@@ -465,6 +515,8 @@ void MaidFacade::acquireItemObjectsFinished() {
 		qDebug() << "writing " << currentFileFileInfo.ulTotalLength << " bytes";
 		outFile.write(currentFileData->buffer, currentFileFileInfo.ulTotalLength);
 		outFile.close();
+
+		lastFileInfo = QFileInfo(filename);
 	}();
 
 	delete[] currentFileData->buffer;
@@ -474,6 +526,36 @@ void MaidFacade::acquireItemObjectsFinished() {
 	// acquire next item object
 	QFuture<bool> acquireFuture = QtConcurrent::run(this, &MaidFacade::acquireItemObjects);
 	acquireFutureWatcher.setFuture(acquireFuture);
+}
+
+/**
+ * For image0.jpg, this will return image1.jpg, etc.
+ */
+QString MaidFacade::increaseFilenameNumber(const QFileInfo& fileInfo) {
+	std::ifstream testFileIn;
+	QString basePath = fileInfo.canonicalPath() + "/" + fileInfo.baseName();
+	QString filename = "";
+	// test file names
+	while (true) {
+		filename = basePath + "_" + QString::number(++prevFileNumber) + "." + fileInfo.completeSuffix();
+		testFileIn.open(filename.toStdString());
+		if (!testFileIn.good()) {
+			testFileIn.close();
+			break;
+		}
+
+		testFileIn.close();
+	}
+
+	return filename;
+}
+
+QString MaidFacade::getCurrentSavePath() {
+	if (firstFilename.isEmpty()) {
+		return QString();
+	} else {
+		return QFileInfo(firstFilename).canonicalPath();
+	}
 }
 
 bool MaidFacade::toggleLiveView() {
@@ -648,26 +730,8 @@ std::string MaidFacade::makePictureFilename() {
 	return filenameStream.str();
 }
 
-/**
- * For image0.jpg, this will return image1.jpg, etc.
- */
-QString MaidFacade::increaseFilenameNumber(const QFileInfo& fileInfo) {
-	std::ifstream testFileIn;
-	QString basePath = fileInfo.filePath().remove("." + fileInfo.completeSuffix());
-	QString filename = "";
-	// test file names
-	while (true) {
-		filename = basePath + "_" + QString::number(++prevFileNumber) + "." + fileInfo.completeSuffix();
-		testFileIn.open(filename.toStdString());
-		if (!testFileIn.good()) {
-			testFileIn.close();
-			break;
-		}
-
-		testFileIn.close();
-	}
-
-	return filename;
+QFileInfo MaidFacade::getLastFileInfo() {
+	return lastFileInfo;
 }
 
 void MaidFacade::setCurrentFileData(DataProcData* fileData, void* info) {
@@ -680,6 +744,11 @@ void MaidFacade::progressCallbackUpdate(ULONG command, ULONG param, ULONG done, 
 	if (command == kNkMAIDCommand_CapStart && param == kNkMAIDCapability_Acquire) {
 		emit updateAcquireProgress(done, total);
 	}
+}
+
+void MaidFacade::enumerateCapsAll() {
+	moduleObject->enumCaps();
+	sourceObject->enumCaps();
 }
 
 void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
@@ -700,7 +769,7 @@ void CALLPASCAL CALLBACK eventProc(NKREF ref, ULONG eventType, NKPARAM data) {
 		// The Type0007 Module does not use this event.
 		break;
 	case kNkMAIDEvent_CapChange:
-		// TODO re-enumerate the capabilities
+		maidFacade->enumerateCapsAll();
 		maidFacade->capValueChangeCallback(data);
 		break;
 	case kNkMAIDEvent_CapChangeValueOnly:

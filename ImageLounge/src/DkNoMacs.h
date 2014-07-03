@@ -381,6 +381,7 @@ enum helpActions {
 #ifdef NIKON_API
 enum cameraActions {
 	menu_camera_connect,
+	menu_camera_af,
 	menu_camera_shoot,
 	menu_camera_shoot_af,
 	menu_camera_liveview,

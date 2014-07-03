@@ -28,12 +28,6 @@ void MaidObject::enumCaps() {
 	int result;
 
 	do {
-
-		if (!MaidUtil::getInstance().isLoaded()) {
-			printf("Could not open connection because the NIKON Library was not loaded\n");	// >DIR: add an error dialog [19.5.2014 markus]
-			return;
-		}
-
 		result = MaidUtil::getInstance().callMAIDEntryPoint(obj, kNkMAIDCommand_GetCapCount, 0, kNkMAIDDataType_UnsignedPtr, (NKPARAM) &capCount, NULL, 0);
 
  		if (result == kNkMAIDResult_NoError) {
@@ -74,11 +68,13 @@ MaidObject* MaidObject::create(ULONG id, MaidObject* parent) {
 }
 
 /*!
- * Returns the capabilites as a vector
+ * Returns the capabilites as a vector (does not re-enumerate)
  * throws MaidError
  */
 std::vector<NkMAIDCapInfo> MaidObject::enumCapsVector() {
-	enumCaps();
+	if (!capArray) {
+		enumCaps();
+	}
 	return std::vector<NkMAIDCapInfo>(capArray.get(), capArray.get() + capCount);
 }
 
@@ -358,6 +354,9 @@ bool MaidObject::async() {
 	return (result == kNkMAIDResult_NoError || result == kNkMAIDResult_Pending);
 }
 
+/*!
+ * throws MaidError
+ */
 bool MaidObject::isAlive() {
 	BYTE isAlive;
 	try {

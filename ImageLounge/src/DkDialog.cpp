@@ -4137,10 +4137,14 @@ void DkCamControls::createLayout() {
 	widget = new QWidget();
 
 	connectionLayout = new QHBoxLayout();
-	lensAttachedLabel = new QLabel();
+	lensAttachedLabel = new QLabel(tr("No lens attached"));
+	autoIsoLabel = new QLabel(tr("Auto-ISO is activated"));
+	autoIsoLabel->setToolTip(tr("The selected ISO value will not be used. Deactivate Auto-ISO in the camera menu."));
 	acquireProgressBar = new QProgressBar();
 	updateLensAttachedLabel(false);
+	updateAutoIsoLabel();
 	connectionLayout->addWidget(lensAttachedLabel);
+	connectionLayout->addWidget(autoIsoLabel);
 	connectionLayout->addWidget(acquireProgressBar);
 	acquireProgressBar->setVisible(false);
 	acquireProgressBar->setMinimum(0);
@@ -4187,9 +4191,12 @@ void DkCamControls::createLayout() {
 	shutterSpeedWidget->setLayout(shutterSpeedLayout);
 
 	buttonsLayout = new QHBoxLayout();
+	afButton = new QPushButton(tr("AF"));
+	afButton->setToolTip(tr("Auto-Focus"));
 	shootButton = new QPushButton(tr("Shoot"));
 	shootAfButton = new QPushButton(tr("Shoot with AF"));
 	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
+	buttonsLayout->addWidget(afButton);
 	buttonsLayout->addWidget(shootButton);
 	buttonsLayout->addWidget(shootAfButton);
 	buttonsLayout->addSpacerItem(new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum));
@@ -4240,9 +4247,40 @@ void DkCamControls::createLayout() {
 	profilesLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::MinimumExpanding, QSizePolicy::Minimum));
 	profilesGroup->setLayout(profilesLayout);
 
+	// options group
+	
+	filePathWidget = new QWidget();
+	QLayout* filePathLayout = new QHBoxLayout();
+	filePathLabel = new QLabel();
+	filePathLabel->setObjectName("filePathLabel");
+	filePathLabel->setAccessibleName(tr("Save path"));
+	filePathLayout->addWidget(new QLabel(tr("Save path")));
+	filePathLayout->addWidget(filePathLabel);
+	filePathWidget->setLayout(filePathLayout);
+	filePathWidget->setEnabled(false);
+
+	saveNamesCheckBox = new QCheckBox(tr("Name files automatically"));
+	saveNamesCheckBox->setChecked(true);
+	saveNamesCheckBox->setEnabled(false);
+
+	openImagesCheckBox = new QCheckBox(tr("Load and display images after shooting"));
+	openImagesCheckBox->setChecked(true);
+	openImagesCheckBox->setEnabled(false);
+
+	optionsGroup = new QGroupBox(tr("Options"));
+	optionsGroup->setFlat(true);
+	optionsLayout = new QVBoxLayout();
+	optionsLayout->addWidget(filePathWidget);
+	optionsLayout->addWidget(saveNamesCheckBox);
+	optionsLayout->addWidget(openImagesCheckBox);
+	optionsGroup->setLayout(optionsLayout);
+
+	// .
+
 	outerLayout = new QVBoxLayout();
 	outerLayout->addWidget(profilesGroup);
 	outerLayout->addWidget(mainGroup);
+	outerLayout->addWidget(optionsGroup);
 	outerLayout->addSpacerItem(boxFillerV);
 
 	widget->setLayout(outerLayout);
@@ -4251,6 +4289,7 @@ void DkCamControls::createLayout() {
 	updateProfilesUi();
 
 	// connect signals
+	connect(afButton, SIGNAL(clicked()), this, SLOT(onAutoFocus()));
 	connect(shootButton, SIGNAL(clicked()), this, SLOT(onShoot()));
 	connect(shootAfButton, SIGNAL(clicked()), this, SLOT(onShootAf()));
 	connect(loadProfileButton, SIGNAL(clicked()), this, SLOT(loadProfile()));
@@ -4258,6 +4297,7 @@ void DkCamControls::createLayout() {
 	connect(newProfileButton, SIGNAL(clicked()), this, SLOT(newProfile()));
 	connect(deleteProfileButton, SIGNAL(clicked()), this, SLOT(deleteProfile()));
 	connect(profilesCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(onProfilesComboIndexChanged(int)));
+	connect(saveNamesCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onSaveNamesCheckBoxChanged(int)));
 	connect(this, SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(arrangeLayout(Qt::DockWidgetArea)));
 	connect(this, SIGNAL(topLevelChanged(bool)), this, SLOT(arrangeLayout()));
 	// maidFacade signals
@@ -4339,6 +4379,10 @@ void DkCamControls::onOpenDeviceError() {
 	//qDebug() << tr("The source could not be opened");
 }
 
+void DkCamControls::onSaveNamesCheckBoxChanged(int state) {
+	maidFacade->setAutoSaveNaming(state != 0);
+}
+
 void DkCamControls::setConnected(bool newValue) {
 	connected = newValue;
 	emit statusChanged();
@@ -4358,11 +4402,23 @@ bool DkCamControls::isShootActive() {
 
 void DkCamControls::stateUpdate() {
 	auto prevDeviceIds = deviceIds;
-	deviceIds = maidFacade->listDevices();
+	bool isSourceAlive = false;
+	try {
+		deviceIds = maidFacade->listDevices();
+	} catch (Maid::MaidError) {
+		qDebug() << "listing devices failed";
+	}
 
 	if (connected && connectedDeviceId.second) {
+		try {
+			isSourceAlive = maidFacade->isSourceAlive();
+		} catch (Maid::MaidError) {
+			qDebug() << "could not read wether source is alive";
+			isSourceAlive = false;
+		}
+
 		// device disconnected?
-		if (deviceIds.find(connectedDeviceId.first) != deviceIds.end() && !maidFacade->isSourceAlive()) {
+		if (deviceIds.find(connectedDeviceId.first) != deviceIds.end() && !isSourceAlive) {
 			closeDeviceAndSetState();
 		} else {
 			// update live view status
@@ -4440,8 +4496,12 @@ void DkCamControls::closeDeviceAndSetState() {
 }
 
 void DkCamControls::stopActivities() {
-	stateUpdateTimer->stop();
-	liveViewTimer->stop();
+	if (stateUpdateTimer) {
+		stateUpdateTimer->stop();
+	}
+	if (liveViewTimer) {
+		liveViewTimer->stop();
+	}
 }
 
 void DkCamControls::showEvent(QShowEvent *event) {
@@ -4453,6 +4513,11 @@ void DkCamControls::closeEvent(QCloseEvent* event) {
 	//writeSettings();
 }
 
+void DkCamControls::resizeEvent(QResizeEvent *event) {
+	updateWidgetSize();
+	QWidget::resizeEvent(event);
+}
+
 void DkCamControls::setVisible(bool visible) {
 	if (!visible) {
 		stopActivities();
@@ -4460,26 +4525,57 @@ void DkCamControls::setVisible(bool visible) {
 	QDockWidget::setVisible(visible);
 }
 
-void DkCamControls::updateLensAttachedLabel(bool attached) {
-	if (attached || !connected) {
-		lensAttachedLabel->setText(tr(""));
+void DkCamControls::updateWidgetSize() {
+	QString savePath = maidFacade->getCurrentSavePath();
+	if (savePath.isEmpty()) {
+		filePathLabel->setText(tr("-"));
 	} else {
-		lensAttachedLabel->setText(tr("No lens attached"));
+		QFontMetricsF fontMetrics(filePathLabel->font());
+		filePathLabel->setText(fontMetrics.elidedText(savePath, Qt::TextElideMode::ElideLeft, exposureModeCombo->width()));
+		filePathLabel->setToolTip(savePath);
 	}
 }
+
+void DkCamControls::updateLensAttachedLabel(bool attached) {
+	if (attached || !connected) {
+		lensAttachedLabel->setVisible(false);
+	} else {
+		lensAttachedLabel->setVisible(true);
+	}
+}
+
+void DkCamControls::updateAutoIsoLabel() {
+	if (!connected) {
+		autoIsoLabel->setVisible(false);
+	} else {
+		try {
+			autoIsoLabel->setVisible(maidFacade->isAutoIso());
+		} catch (Maid::MaidError) {
+			qDebug() << "could not read auto iso (IsoControl) value";
+		}
+	}
+}
+
 
 void DkCamControls::updateUiValues() {
 	// exposure mode first
 	updateExposureMode();
 	updateExposureModeDependentUiValues();
+	updateAutoIsoLabel();
+
+	filePathWidget->setEnabled(connected);
+	saveNamesCheckBox->setEnabled(connected);
+	openImagesCheckBox->setEnabled(connected);
 
 	if (liveViewActive) {
 		shootAfButton->setEnabled(false);
+		afButton->setEnabled(true);
 	} else {
 		mainGroup->setEnabled(connected);
 		profilesGroup->setEnabled(connected);
 		shootAfButton->setEnabled(connected);
 		shootButton->setEnabled(connected);
+		afButton->setEnabled(connected);
 	}
 }
 
@@ -4503,6 +4599,9 @@ void DkCamControls::capabilityValueChanged(uint32_t capId) {
 	case kNkMAIDCapability_ExposureMode:
 		updateExposureMode();
 		updateExposureModeDependentUiValues();
+		break;
+	case kNkMAIDCapability_IsoControl:
+		updateAutoIsoLabel();
 		break;
 	}
 }
@@ -4581,7 +4680,14 @@ void DkCamControls::setCameraComboBoxValue(QComboBox* comboBox, std::function<bo
 		fallback = apertureCombo->currentIndex();
 	}
 
-	if (setCameraValue(index)) {
+	bool r;
+	try {
+		r = setCameraValue(index);
+	} catch (Maid::MaidError) {
+		r = false;
+	}
+
+	if (r) {
 		if (comboBox->currentIndex() != index) {
 			comboBox->setCurrentIndex(index);
 		}
@@ -4609,7 +4715,9 @@ void DkCamControls::updateAperture() {
 	try {
 		aperture = maidFacade->readAperture();
 		exposureMode = maidFacade->getExposureMode();
-	} catch (Maid::MaidError) {};
+	} catch (Maid::MaidError) {
+		qDebug() << "error reading aperture";
+	}
 
 	apertureCombo->clear();
 	if (aperture.second && exposureMode.second) {
@@ -4645,7 +4753,9 @@ void DkCamControls::updateSensitivity() {
 	MaidFacade::MaybeStringValues sensitivity;
 	try {
 		sensitivity = maidFacade->readSensitivity();
-	} catch (Maid::MaidError) {};
+	} catch (Maid::MaidError) {
+		qDebug() << "error reading ISO sensitivity";
+	}
 
 	isoCombo->clear();
 	if (sensitivity.second) {
@@ -4674,7 +4784,9 @@ void DkCamControls::updateShutterSpeed() {
 	try {
 		shutterSpeed = maidFacade->readShutterSpeed();
 		exposureMode = maidFacade->getExposureMode();
-	} catch (Maid::MaidError) {};
+	} catch (Maid::MaidError) {
+		qDebug() << "error reading shutter speed or exposure mode";
+	};
 
 	shutterSpeedCombo->clear();
 	if (shutterSpeed.second && exposureMode.second) {
@@ -4710,7 +4822,9 @@ void DkCamControls::updateExposureMode() {
 	MaidFacade::MaybeUnsignedValues exposureMode;
 	try {
 		exposureMode = maidFacade->readExposureMode();
-	} catch (Maid::MaidError) {};
+	} catch (Maid::MaidError) {
+		qDebug() << "error reading exposure mode";
+	}
 	
 	if (exposureMode.second) {
 		exposureModeCombo->clear();
@@ -4733,11 +4847,7 @@ void DkCamControls::updateExposureMode() {
 		exposureModeCombo->setCurrentIndex(exposureMode.first.currentValue);
 
 		// update lens state
-		if (!maidFacade->isLensAttached()) {
-			lensAttachedLabel->setText(tr("No Lens attached"));
-		} else {
-			lensAttachedLabel->clear();
-		}
+		updateLensAttachedLabel(maidFacade->isLensAttached());
 
 		connect(exposureModeCombo, SIGNAL(activated(int)), this, SLOT(onExposureModeActivated(int)));
 		exposureModeCombo->setEnabled(true);
@@ -4758,6 +4868,14 @@ void DkCamControls::updateProfilesUi() {
 		deleteProfileButton->setEnabled(true);
 	}
 	newProfileButton->setEnabled(true);
+}
+
+void DkCamControls::onAutoFocus() {
+	try {
+		maidFacade->autoFocus();
+	} catch (Maid::MaidError) {
+		qDebug() << tr("error during auto-focus");
+	}
 }
 
 void DkCamControls::onShoot() {
@@ -4796,6 +4914,16 @@ void DkCamControls::onShootFinished() {
 	profilesGroup->setEnabled(true);
 	acquireProgressBar->setVisible(false);
 	emit statusChanged();
+
+	QString savePath = maidFacade->getCurrentSavePath();
+	updateWidgetSize();
+	filePathWidget->setEnabled(!savePath.isEmpty());
+
+	// maybe load image
+	if (openImagesCheckBox->isChecked()) {
+		DkImageLoader* loader = viewport->getImageLoader();
+		loader->loadFile(maidFacade->getLastFileInfo());
+	}
 }
 
 void DkCamControls::onUpdateAcquireProgress(unsigned int done, unsigned int total) {
@@ -4826,7 +4954,7 @@ void DkCamControls::onLiveView() {
 
 void DkCamControls::loadProfile() {
 	const Profile& p = profiles.at(profilesCombo->currentIndex());
-	const QString unequalItemsText = tr("Could not apply profile because a value from the profile was not available (wrong camera model?)");
+	const QString unequalItemsText = tr("Could not apply profile because a value from the profile was not available");
 	QString errorText;
 
 	bool lensAttached = maidFacade->isLensAttached();
@@ -5086,7 +5214,7 @@ void ConnectDeviceDialog::updateDevicesList(std::set<uint32_t> deviceIds) {
 
 		if (deviceIds.size() > 0) {
 			for (uint32_t deviceId : deviceIds) {
-				devicesListWidget->addItem(new DeviceListWidgetItem(QString("Device #%1").arg(deviceId), deviceId));
+				devicesListWidget->addItem(new DeviceListWidgetItem(QString("Nikon D4 #%1").arg(deviceId), deviceId));
 			}
 
 			devicesListWidget->item(0)->setSelected(true);

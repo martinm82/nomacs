@@ -1033,6 +1033,7 @@ signals:
 
 public slots:
 	void connectDevice();
+	void onAutoFocus();
 	void onShoot();
 	void onShootAf();
 	void onAcquireStart();
@@ -1054,6 +1055,7 @@ protected slots:
 	void saveProfile();
 	void deleteProfile();
 	void newProfile();
+	void onSaveNamesCheckBoxChanged(int state);
 
 protected:
 	struct Profile {
@@ -1067,9 +1069,11 @@ protected:
 
 	void showEvent(QShowEvent *event);
 	void closeEvent(QCloseEvent *event);
+	void resizeEvent(QResizeEvent *event);
 
 	void createLayout();
 	void updateLensAttachedLabel(bool attached);
+	void updateAutoIsoLabel();
 	void updateUiValues();
 	void updateExposureModeDependentUiValues();
 	void updateAperture();
@@ -1089,6 +1093,7 @@ protected:
 	void writeProfiles();
 	void readProfiles();
 	void addProfilesComboItem(const Profile& p);
+	void updateWidgetSize();
 
 	static const int stateRefreshInterval;
 	static const int liveViewImageInterval;
@@ -1110,17 +1115,25 @@ protected:
 	DkViewPort* viewport;
 
 	QWidget* widget;
+	QWidget* filePathWidget;
 	QGroupBox* profilesGroup;
 	QGroupBox* mainGroup;
+	QGroupBox* optionsGroup;
 	QBoxLayout* mainLayout;
+	QBoxLayout* optionsLayout;
 	QBoxLayout* outerLayout;
 	QHBoxLayout* profilesLayout;
 	QLabel* lensAttachedLabel;
+	QLabel* autoIsoLabel;
+	QLabel* filePathLabel;
+	QCheckBox* saveNamesCheckBox;
+	QCheckBox* openImagesCheckBox;
 	QComboBox* profilesCombo;
 	QComboBox* exposureModeCombo;
 	QComboBox* isoCombo;
 	QComboBox* apertureCombo;
 	QComboBox* shutterSpeedCombo;
+	QPushButton* afButton;
 	QPushButton* shootButton;
 	QPushButton* shootAfButton;
 	QPushButton* newProfileButton;

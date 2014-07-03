@@ -69,7 +69,8 @@ public:
 	// some callbacks are public because they have to be called from a function outside the class
 	std::function<void(unsigned long)> capValueChangeCallback;
 
-	void init();
+	bool init();
+	bool isInitialized();
 	void setCapValueChangeCallback(std::function<void(uint32_t)> capValueChangeCallback);
 	std::set<uint32_t> listDevices();
 	void openSource(ULONG id);
@@ -91,6 +92,7 @@ public:
 	bool setShutterSpeed(size_t newValue);
 	bool setExposureMode(size_t newValue);
 	bool isLensAttached();
+	bool isAutoIso();
 	bool shoot(bool withAf = false);
 	bool acquireItemObjects();
 	void startAcquireItemObjects();
@@ -100,6 +102,13 @@ public:
 	std::pair<QStringList, size_t> toQStringList(const StringValues&);
 	NKERROR processMaidData(NKREF ref, LPVOID info, LPVOID data);
 	void progressCallbackUpdate(ULONG command, ULONG param, ULONG done, ULONG total);
+	void enumerateCapsAll();
+	QString getCurrentSavePath();
+	void setAutoSaveNaming(bool);
+	QFileInfo getLastFileInfo();
+
+public slots:
+	bool autoFocus();
 
 signals:
 	void acquireStart();
@@ -120,6 +129,7 @@ private:
 	MaybeUnsignedValues exposureMode;
 	QMutex mutex;
 	bool lensAttached;
+	QFileInfo lastFileInfo;
 	QString firstFilename;
 	unsigned int prevFileNumber;
 	QFutureWatcher<int> shootFutureWatcher;
@@ -130,6 +140,8 @@ private:
 	NkMAIDFileInfo currentFileFileInfo;
 	bool allItemsAcquired;
 	bool currentlyAcquiringObjects;
+	bool initialized;
+	bool autoSaveNaming;
 	
 	//void closeChildren(std::unique_ptr<Maid::MaidObject> mo);
 	MaybeStringValues readPackedStringCap(ULONG capId);

@@ -158,9 +158,19 @@ void DkNoMacs::init() {
 	// camera stuff
 #ifdef NIKON_API
 	maidFacade = new MaidFacade(this);
-	maidFacade->init();
-	showCamControls(false);
-	connect(camControls, SIGNAL(statusChanged()), this, SLOT(updateCameraStatus()));
+	if (maidFacade->init()) {
+		showCamControls(false);
+		connect(camControls, SIGNAL(statusChanged()), this, SLOT(updateCameraStatus()));
+	} else {
+		QMessageBox warningDialog(this);
+		warningDialog.setWindowTitle(tr("MAID Library could not be opened"));
+		warningDialog.setText(tr("The MAID library could not be opened. Camera controls will be disabled."));
+		warningDialog.setIcon(QMessageBox::Warning);
+		warningDialog.setStandardButtons(QMessageBox::Ok);
+		warningDialog.setDefaultButton(QMessageBox::Ok);
+		warningDialog.show();
+		warningDialog.exec();
+	}
 #endif
 
 	// shortcuts and actions
@@ -251,7 +261,6 @@ void DkNoMacs::init() {
 		}
 	}
 #endif // Q_WS_WIN
-
 	// TODO: finish registration process
 	//DkFileFilterHandling fh;
 	//fh.registerFileType(DkSettings::openFilters.at(2), tr("Image"), true);
@@ -690,6 +699,7 @@ void DkNoMacs::createMenu() {
 #ifdef NIKON_API
 	cameraMenu = menu->addMenu(tr("&Camera"));
 	cameraMenu->addAction(cameraActions[menu_camera_connect]);
+	cameraMenu->addAction(cameraActions[menu_camera_af]);
 	cameraMenu->addAction(cameraActions[menu_camera_shoot]);
 	cameraMenu->addAction(cameraActions[menu_camera_shoot_af]);
 	cameraMenu->addAction(cameraActions[menu_camera_liveview]);
@@ -1133,6 +1143,7 @@ void DkNoMacs::createActions() {
 	panelActions[menu_panel_camera]->setShortcut(QKeySequence(shortcut_show_camcontrols));
 	panelActions[menu_panel_camera]->setStatusTip(tr("Shows the Camera Controls"));
 	panelActions[menu_panel_camera]->setCheckable(true);
+	panelActions[menu_panel_camera]->setEnabled(maidFacade->isInitialized());
 	connect(panelActions[menu_panel_camera], SIGNAL(toggled(bool)), this, SLOT(showCamControls(bool)));
 #endif
 
@@ -1274,20 +1285,27 @@ void DkNoMacs::createActions() {
 
 	cameraActions[menu_camera_connect] = new QAction(tr("Connect"), this);
 	cameraActions[menu_camera_connect]->setStatusTip(tr("Connect a camera"));
-	cameraActions[menu_camera_connect]->setEnabled(true);
-	connect(cameraActions[menu_camera_connect], SIGNAL(triggered()), camControls, SLOT(connectDevice()));
+	cameraActions[menu_camera_connect]->setEnabled(maidFacade->isInitialized());
 
+	cameraActions[menu_camera_af] = new QAction(tr("Auto-Focus"), this);
+	cameraActions[menu_camera_af]->setEnabled(false);
+	
 	cameraActions[menu_camera_shoot] = new QAction(tr("Shoot"), this);
 	cameraActions[menu_camera_shoot]->setEnabled(false);
-	connect(cameraActions[menu_camera_shoot], SIGNAL(triggered()), camControls, SLOT(onShoot()));
-
+	
 	cameraActions[menu_camera_shoot_af] = new QAction(tr("Shoot with AF"), this);
 	cameraActions[menu_camera_shoot_af]->setEnabled(false);
-	connect(cameraActions[menu_camera_shoot_af], SIGNAL(triggered()), camControls, SLOT(onShootAf()));
-
+	
 	cameraActions[menu_camera_liveview] = new QAction(tr("Start Live View"), this);
-	cameraActions[menu_camera_liveview]->setEnabled(false);
-	connect(cameraActions[menu_camera_liveview], SIGNAL(triggered()), camControls, SLOT(onLiveView()));
+	cameraActions[menu_camera_liveview]->setEnabled(false);	
+
+	if (maidFacade->isInitialized()) {
+		connect(cameraActions[menu_camera_connect], SIGNAL(triggered()), camControls, SLOT(connectDevice()));
+		connect(cameraActions[menu_camera_af], SIGNAL(triggered()), camControls, SLOT(onAutoFocus()));
+		connect(cameraActions[menu_camera_shoot], SIGNAL(triggered()), camControls, SLOT(onShoot()));
+		connect(cameraActions[menu_camera_shoot_af], SIGNAL(triggered()), camControls, SLOT(onShootAf()));
+		connect(cameraActions[menu_camera_liveview], SIGNAL(triggered()), camControls, SLOT(onLiveView()));
+	}
 #endif
 
 	// help menu
@@ -1506,8 +1524,15 @@ void DkNoMacs::closeEvent(QCloseEvent *event) {
 	}
 
 #ifdef NIKON_API
-	camControls->stopActivities();
-	maidFacade->closeEverything();
+	if (camControls) {
+		camControls->stopActivities();
+	}
+	try {
+		maidFacade->closeEverything();
+	} catch (Maid::MaidError) {
+		// hopefully nothing left to close
+		qDebug() << "unable to close maid objects and module";
+	}
 #endif
 
 	QMainWindow::closeEvent(event);
@@ -3972,6 +3997,7 @@ void DkNoMacs::updateCameraStatus() {
 	if (camControls->isLiveViewActive()) {
 		cameraActions[menu_camera_connect]->setEnabled(false);
 		cameraActions[menu_camera_liveview]->setText(tr("Stop Live View"));
+		cameraActions[menu_camera_af]->setEnabled(true);
 		cameraActions[menu_camera_shoot]->setEnabled(true);
 		cameraActions[menu_camera_shoot_af]->setEnabled(false);
 	} else {
@@ -3980,6 +4006,7 @@ void DkNoMacs::updateCameraStatus() {
 
 	if (camControls->isShootActive()) {
 		cameraActions[menu_camera_connect]->setEnabled(false);
+		cameraActions[menu_camera_af]->setEnabled(false);
 		cameraActions[menu_camera_shoot]->setEnabled(false);
 		cameraActions[menu_camera_shoot_af]->setEnabled(false);
 		cameraActions[menu_camera_liveview]->setEnabled(false);
@@ -3987,6 +4014,7 @@ void DkNoMacs::updateCameraStatus() {
 
 	if (!camControls->isLiveViewActive() && !camControls->isShootActive()) {
 		cameraActions[menu_camera_connect]->setEnabled(true);
+		cameraActions[menu_camera_af]->setEnabled(connected);
 		cameraActions[menu_camera_shoot]->setEnabled(connected);
 		cameraActions[menu_camera_shoot_af]->setEnabled(connected);
 	}
