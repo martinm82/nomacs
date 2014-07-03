@@ -28,20 +28,20 @@
 #pragma once
 
 #include <QApplication>
-#include <QtGui/QRadioButton>
-#include <QtGui/QAction>
-#include <QtGui/QBoxLayout>
-#include <QtGui/QDialog>
-#include <QtGui/QGraphicsBlurEffect>
-#include <QtGui/QGraphicsPixmapItem>
-#include <QtGui/QLabel>
-#include <QtGui/QPainter>
-#include <QtGui/QPushButton>
-#include <QtGui/QMouseEvent>
-#include <QtGui/QShortcut>
-#include <QtGui/QToolButton>
-#include <QtGui/QComboBox>
-#include <QtGui/QMessageBox>
+#include <QRadioButton>
+#include <QAction>
+#include <QBoxLayout>
+#include <QDialog>
+#include <QGraphicsBlurEffect>
+#include <QGraphicsPixmapItem>
+#include <QLabel>
+#include <QPainter>
+#include <QPushButton>
+#include <QMouseEvent>
+#include <QShortcut>
+#include <QToolButton>
+#include <QComboBox>
+#include <QMessageBox>
 #include <QStringBuilder>
 #include <QPointer>
 #include <QTimer>
@@ -50,13 +50,11 @@
 #include <QVector2D>
 #include <qmath.h>
 #include <QScrollBar>
-#include <QPlastiqueStyle>
 #include <QFileSystemModel>
 #include <QDockWidget>
 #include <QTreeView>
 #include <QSortFilterProxyModel>
 #include <QToolTip>
-#include <QtConcurrentRun>
 #include <QProgressDialog>
 #include <QHeaderView>
 #include <QMenu>
@@ -65,8 +63,16 @@
 #include <QGraphicsPixmapItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsItem>
+#include <QtConcurrentRun>
+#include <QMimeData>
+#include <QTimeLine>
+#include <QGraphicsItemAnimation>
 #include <QListWidget>
 #include <QDialogButtonBox>
+
+#if QT_VERSION < 0x050000
+#include <QPlastiqueStyle>
+#endif
 
 // gif animation label -----
 #include <QVBoxLayout>
@@ -79,8 +85,9 @@
 #include "DkSettings.h"
 #include "DkMath.h"
 #include "DkToolbars.h"
+#include "DkBaseViewPort.h"
 
-#ifdef Q_WS_WIN
+#ifdef WIN32
 #include <ShObjIdl.h>
 #include <ShlObj.h>
 #endif
@@ -93,7 +100,7 @@ class DkWidget : public QWidget {
 	Q_OBJECT
 
 public:
-	DkWidget(QWidget* parent = 0, Qt::WFlags flags = 0);
+	DkWidget(QWidget* parent = 0, Qt::WindowFlags flags = 0);
 
 	void registerAction(QAction* action) {
 		connect(this, SIGNAL(visibleSignal(bool)), action, SLOT(setChecked(bool)));
@@ -485,8 +492,8 @@ public:
 	};
 
 signals:
-	void nextSignal(bool silent = true);
-	void previousSignal(bool silent = true);
+	void nextSignal();
+	void previousSignal();
 
 public slots:
 	void play(bool play) {
@@ -533,6 +540,10 @@ public slots:
 
 	virtual void show(int ms = 0);
 
+	bool isPlaying() const {
+		return playing;
+	};
+
 protected:
 	void resizeEvent(QResizeEvent *event);
 	void init();
@@ -551,11 +562,12 @@ protected:
 
 };
 
+
 class DkFilePreview : public DkWidget {
 	Q_OBJECT
 
 public:
-	DkFilePreview(DkThumbPool* thumbPool = 0, QWidget* parent = 0, Qt::WFlags flags = 0);
+	DkFilePreview(QWidget* parent = 0, Qt::WindowFlags flags = 0);
 	
 	~DkFilePreview() {
 	};
@@ -581,6 +593,8 @@ public slots:
 	void leaveEvent(QEvent *event);
 	void moveImages();
 	void updateFileIdx(int fileIdx);
+	void updateThumbs(QVector<QSharedPointer<DkImageContainerT> > thumbs);
+	void setFileInfo(QSharedPointer<DkImageContainerT> cImage);
 
 signals:
 	void loadFileSignal(QFileInfo file);
@@ -588,12 +602,7 @@ signals:
 	void changeFileSignal(int idx);
 
 private:
-	//QVector<QSharedPointer<DkThumbNailT>> thumbs;
-	DkThumbPool* thumbPool;
-	//DkThumbsLoader* thumbsLoader;
-	QDir thumbsDir;
-
-	
+	QVector<QSharedPointer<DkImageContainerT> > thumbs;
 	QWidget* parent;
 	QTransform worldMatrix;
 	
@@ -607,8 +616,8 @@ private:
 	
 	QLinearGradient leftGradient;
 	QLinearGradient rightGradient;
-	QPixmap selectionGlow;
-	QPixmap currentImgGlow;
+	QPixmap selectedImg;
+	QPixmap currentImg;
 	
 	QImage stubImg;
 	int mouseTrace;
@@ -630,26 +639,30 @@ private:
 
 	QRectF newFileRect;
 	bool scrollToCurrentImage;
+	bool isPainted;
 	
 	void init();
 	//void clearThumbs();
 	//void indexDir(int force = DkThumbsLoader::not_forced);
 	void drawThumbs(QPainter* painter);
 	void drawFadeOut(QLinearGradient gradient, QRectF imgRect, QImage *img);
-	void createSelectedEffect(QImage img, QColor col);
-	void createCurrentImgEffect(QImage img, QColor col);
+	void createCurrentImg(const QImage& img);
 };
 
-class DkThumbLabel : public QObject, public QGraphicsPixmapItem {
+class DkThumbLabel : public QGraphicsObject {
 	Q_OBJECT
 
 public:
 	DkThumbLabel(QSharedPointer<DkThumbNailT> thumb = QSharedPointer<DkThumbNailT>(), QGraphicsItem* parent = 0);
+	~DkThumbLabel();
 
 	void setThumb(QSharedPointer<DkThumbNailT> thumb);
 	QSharedPointer<DkThumbNailT> getThumb() {return thumb;};
 	QRectF boundingRect() const;
+	QPainterPath shape() const;
 	void updateSize();
+	void setVisible(bool visible);
+	QPixmap pixmap() const;
 
 public slots:
 	void updateLabel();
@@ -666,50 +679,57 @@ protected:
 	void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
 
 	QSharedPointer<DkThumbNailT> thumb;
+	QGraphicsPixmapItem icon;
+	QGraphicsTextItem text;
 	QLabel* imgLabel;
 	bool thumbInitialized;
+	bool fetchingThumb;
 	QPen noImagePen;
 	QBrush noImageBrush;
 	QPen selectPen;
 	QBrush selectBrush;
 	bool isHovered;
+	QPointF lastMove;
 };
 
 class DkThumbScene : public QGraphicsScene {
 	Q_OBJECT
 
 public:
-	DkThumbScene(DkThumbPool* thumbPool = 0, QWidget* parent = 0);
+	DkThumbScene(QWidget* parent = 0);
 
 	void updateLayout();
 	QList<QUrl> getSelectedUrls() const;
-	void setFile(const QFileInfo& file);
 
 public slots:
 	void updateThumbLabels();
 	void loadFile(QFileInfo& file);
 	void increaseThumbs();
 	void decreaseThumbs();
+	void toggleSquaredThumbs(bool squares);
 	void resizeThumbs(float dx);
 	void showFile(const QFileInfo& file);
 	void selectThumbs(bool select = true, int from = 0, int to = -1);
 	void selectAllThumbs(bool select = true);
+	void updateThumbs(QVector<QSharedPointer<DkImageContainerT> > thumbs);
 
 signals:
 	void loadFileSignal(QFileInfo file);
 	void statusInfoSignal(QString msg, int pos = 0);
+	void thumbLoadedSignal();
 
 protected:
+	QVector<QSharedPointer<DkImageContainerT> > thumbs;
 	//void wheelEvent(QWheelEvent *event);
 
-	DkThumbPool* thumbPool;
 	int xOffset;
 	int numRows;
 	int numCols;
 	bool firstLayout;
 	bool itemClicked;
 
-	QVector<QSharedPointer<DkThumbLabel> > thumbLabels;
+	QVector<DkThumbLabel* > thumbLabels;
+	QList<DkThumbLabel* > thumbsNotLoaded;
 };
 
 class DkThumbsView : public QGraphicsView {
@@ -717,6 +737,12 @@ class DkThumbsView : public QGraphicsView {
 
 public:
 	DkThumbsView(DkThumbScene* scene, QWidget* parent = 0);
+
+signals:
+	void updateDirSignal(QFileInfo file);
+
+public slots:
+	void fetchThumbs();
 
 protected:
 	void wheelEvent(QWheelEvent *event);
@@ -740,11 +766,12 @@ public:
 		select_all,
 		zoom_in,
 		zoom_out,
+		display_squares,
 
 		actions_end
 	};
 
-	DkThumbScrollWidget(DkThumbPool* thumbPool = 0, QWidget* parent = 0, Qt::WindowFlags flags = 0);
+	DkThumbScrollWidget(QWidget* parent = 0, Qt::WindowFlags flags = 0);
 
 	DkThumbScene* getThumbWidget() {
 		return thumbsScene;
@@ -752,6 +779,11 @@ public:
 
 public slots:
 	virtual void setVisible(bool visible);
+	void updateThumbs(QVector<QSharedPointer<DkImageContainerT> > thumbs);
+	void setDir(QFileInfo file);
+
+signals:
+	void updateDirSignal(QFileInfo file);
 
 protected:
 	void createActions();
@@ -759,7 +791,6 @@ protected:
 	void contextMenuEvent(QContextMenuEvent *event);
 
 	DkThumbScene* thumbsScene;
-	DkThumbPool* thumbPool;
 	DkThumbsView* view;
 
 	QMenu* contextMenu;
@@ -804,7 +835,8 @@ public:
 	};
 
 public slots:
-	void updateDir(QFileInfo file, int force = DkThumbsLoader::not_forced);
+	void updateDir(QVector<QSharedPointer<DkImageContainerT> > images);
+	void updateFile(QSharedPointer<DkImageContainerT> imgC);
 	void update(const QVector<QColor>& colors, const QVector<int>& indexes);
 
 	// DkWidget
@@ -817,6 +849,7 @@ public slots:
 
 protected slots:
 	void emitFileSignal(int i);
+	void colorUpdated();
 
 signals:
 	void changeFileSignal(int idx);
@@ -829,15 +862,17 @@ protected:
 	void mouseMoveEvent(QMouseEvent *event);
 	void mouseReleaseEvent(QMouseEvent *event);
 	void resizeEvent(QResizeEvent *event);
-	
-	void indexDir(int force = DkThumbsLoader::not_forced);
-	
-	QDir currentDir;
-	QFileInfo currentFile;
-	QStringList files;
-	DkColorLoader* colorLoader;
+	int fileIdx(QSharedPointer<DkImageContainerT> imgC);
+	void updateColors();
+
+	QSharedPointer<DkImageContainerT> cImg;
+	QVector<QSharedPointer<DkImageContainerT> > images;
+	//DkColorLoader* colorLoader;
 	QVector<QColor> colors;
+	QVector<int> indexes;
 	bool sliding;
+	bool updateFolder;
+	int updatesWaiting;
 	QLabel* handle;
 	DkWidget* dummyWidget;
 	int minHandleWidth;
@@ -861,19 +896,27 @@ class DkThumbsSaver : public DkWidget {
 	Q_OBJECT
 
 public:
-	DkThumbsSaver() : thumbsLoader(0), pd(0) {};
+	DkThumbsSaver(QWidget* parent = 0);
 
-	void processDir(const QDir& dir, bool forceLoad);
+	void processDir(QVector<QSharedPointer<DkImageContainerT> > images, bool forceSave);
+
+signals:
+	void numFilesSignal(int currentFileIdx);
 
 public slots:
 	void stopProgress();
+	void thumbLoaded(bool loaded);
+	void loadNext();
 
 protected:
-	std::vector<DkThumbNail> thumbs;
-	DkThumbsLoader* thumbsLoader;
 
 	QFileInfo currentDir;
 	QProgressDialog* pd;
+	int cLoadIdx;
+	QVector<QSharedPointer<DkImageContainerT> > images;
+	bool stop;
+	bool forceSave;
+	int numSaved;
 };
 
 class DkFileSystemModel : public QFileSystemModel {
@@ -1000,7 +1043,7 @@ public:
 	void draw(QPainter* painter);
 	void createLabels();
 	void resizeEvent(QResizeEvent *resizeW);
-	void getResolution(float &xResolution, float &yResolution);
+	//void getResolution(float &xResolution, float &yResolution);
 	QString getGPSCoordinates();
 	
 	//DkMetaData* getMetaData() {
@@ -1011,26 +1054,9 @@ signals:
 	void enableGpsSignal(bool);
 	
 public slots:
-	void setFileInfo(QFileInfo file, QSize s) {
-		
-		this->file = file;
-		imgSize = s;
-		worldMatrix = QTransform();
-
-		DkImageLoader::imgMetaData.setFileName(file);
-
-		//DkTimer dt;
-		readTags();
-			
-		emit enableGpsSignal(!getGPSCoordinates().isEmpty());
-
-		if (isVisible())
-			createLabels();
-		//qDebug() << "reading tags & creating labels: " << QString::fromStdString(dt.getTotal());
-	}
-
+	void setImageInfo(QSharedPointer<DkImageContainerT> imgC);
 	void setRating(int rating);
-	void setResolution(int xRes, int yRes);
+	//void setResolution(int xRes, int yRes);
 	void updateLabels();
 	void mouseMoveEvent(QMouseEvent *event);
 	void setVisible(bool visible) {
@@ -1069,11 +1095,9 @@ protected:
 
 	QVector<int> maxLenLabel;
 
-	QFileInfo file;
-	//DkMetaData metaData;
 	QVector<DkLabel *> pLabels;
 	QVector<DkLabel *> pValues;
-	QSize imgSize;
+	//QSize imgSize;
 
 	QStringList camDTags;
 	QStringList camDValues;
@@ -1089,6 +1113,7 @@ protected:
 	QMap<int, int> mapIptcExif;
 	QStringList exposureModes;
 	QMap<int, QString> flashModes;
+	QSharedPointer<DkImageContainerT> imgC;
 
 };
 
@@ -1638,18 +1663,18 @@ public:
 
 
 public slots:
-	void setValue(int value) {
+void setValue(int value) {
 		
-		slider->blockSignals(true);
-		slider->setValue(value);
-		slider->blockSignals(false);
+	slider->blockSignals(true);
+	slider->setValue(value);
+	slider->blockSignals(false);
 
-		sliderBox->blockSignals(true);
-		sliderBox->setValue(value);
-		sliderBox->blockSignals(false);
+	sliderBox->blockSignals(true);
+	sliderBox->setValue(value);
+	sliderBox->blockSignals(false);
 
-		emit valueChanged(value);
-	}
+	emit valueChanged(value);
+}
 
 signals:
 	void sliderMoved(int value);
@@ -1664,4 +1689,7 @@ protected:
 	QSlider* slider;
 	QSpinBox* sliderBox;
 };
+
+
+
 };

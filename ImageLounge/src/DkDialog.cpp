@@ -32,7 +32,7 @@
 namespace nmc {
 
 // DkSplashScreen --------------------------------------------------------------------
-DkSplashScreen::DkSplashScreen(QWidget* parent, Qt::WFlags flags) : QDialog(0, flags) {
+DkSplashScreen::DkSplashScreen(QWidget* parent, Qt::WindowFlags flags) : QDialog(0, flags) {
 
 	QPixmap img(":/nomacs/img/splash-screen.png");
 	setWindowFlags(Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint);
@@ -100,187 +100,6 @@ DkSplashScreen::DkSplashScreen(QWidget* parent, Qt::WFlags flags) : QDialog(0, f
 //
 //	close();
 //}
-
-// DkMessageBox --------------------------------------------------------------------
-DkMessageBox::DkMessageBox(QMessageBox::Icon icon, 
-						   const QString& title, 
-						   const QString& text, 
-						   QMessageBox::StandardButtons buttons /* = QMessageBox::NoButton */, 
-						   QWidget* parent /* = 0 */, 
-						   Qt::WindowFlags f /* = Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint */) : QDialog(parent, f) {
-
-	createLayout(icon, text, buttons);
-	setWindowTitle(title);
-
-}
-
-DkMessageBox::DkMessageBox(QWidget* parent /* = 0 */) : QDialog(parent) {
-
-	createLayout(QMessageBox::NoIcon, "", QMessageBox::NoButton);
-	setWindowTitle(tr("Error"));
-}
-
-DkMessageBox::~DkMessageBox() {
-
-	// save show again
-	QSettings settings;
-	settings.beginGroup("DkDialog");
-	settings.setValue(objectName(), showAgain->isChecked());
-
-}
-
-void DkMessageBox::setVisible(bool visible) {
-
-
-	if (visible)
-		adjustSize();
-
-	QDialog::setVisible(visible);
-}
-
-int DkMessageBox::exec() {
-
-	QSettings settings;
-	settings.beginGroup("DkDialog");
-
-	bool show = settings.value(objectName(), true).toBool();
-	showAgain->setChecked(show);
-
-	if (!show)
-		return QDialog::Accepted;
-
-	return QDialog::exec();
-
-	//// save show again
-	//settings.setValue(objectName(), showAgain->isChecked());
-
-	//return ret;
-}
-
-void DkMessageBox::createLayout(const QMessageBox::Icon& userIcon, const QString& userText, QMessageBox::StandardButtons buttons) {
-
-	setAttribute(Qt::WA_DeleteOnClose, true);
-
-	//schamlos von qmessagebox.cpp geklaut
-	textLabel = new QLabel(userText);
-	textLabel->setTextInteractionFlags(Qt::TextInteractionFlags(style()->styleHint(QStyle::SH_MessageBox_TextInteractionFlags, 0, this)));
-
-	textLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-	textLabel->setOpenExternalLinks(true);
-#if defined(Q_WS_MAC)
-	textLabel->setContentsMargins(16, 0, 0, 0);
-#else
-	textLabel->setContentsMargins(2, 0, 0, 0);
-	textLabel->setIndent(9);
-#endif
-	icon = userIcon;
-	iconLabel = new QLabel;
-	iconLabel->setPixmap(QMessageBox::standardIcon((QMessageBox::Icon)icon));
-	iconLabel->setObjectName(QLatin1String("iconLabel"));
-	iconLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-	showAgain = new QCheckBox(tr("Show Dialog Again"));
-	showAgain->setChecked(true);
-
-	buttonBox = new QDialogButtonBox;
-	buttonBox->setObjectName(QLatin1String("buttonBox"));
-	buttonBox->setCenterButtons(style()->styleHint(QStyle::SH_MessageBox_CenterButtons, 0, this));
-	QObject::connect(buttonBox, SIGNAL(clicked(QAbstractButton*)),
-		this, SLOT(buttonClicked(QAbstractButton*)));
-
-	buttonBox->setStandardButtons(QDialogButtonBox::StandardButtons(int(buttons)));
-
-
-	QGridLayout *grid = new QGridLayout;
-#ifndef Q_WS_MAC
-	grid->addWidget(iconLabel, 0, 0, 2, 1, Qt::AlignTop);
-	grid->addWidget(textLabel, 0, 1, 1, 1);
-	grid->addWidget(showAgain, 2, 1, 1, 2);
-	grid->addWidget(buttonBox, 3, 0, 1, 2);
-#else
-	grid->setMargin(0);
-	grid->setVerticalSpacing(8);
-	grid->setHorizontalSpacing(0);
-	setContentsMargins(24, 15, 24, 20);
-	grid->addWidget(iconLabel, 0, 0, 2, 1, Qt::AlignTop | Qt::AlignLeft);
-	grid->addWidget(textLabel, 0, 1, 1, 1);
-	// -- leave space for information label --
-	grid->setRowStretch(1, 100);
-	grid->setRowMinimumHeight(2, 6);
-	grid->addWidget(buttonBox, 3, 1, 1, 1);
-#endif
-
-	//grid->setSizeConstraint(QLayout::SetNoConstraint);
-	setLayout(grid);
-
-	setModal(true);
-
-#ifdef Q_WS_MAC
-	QFont f = font();
-	f.setBold(true);
-	textLabel->setFont(f);
-#endif
-
-}
-
-void DkMessageBox::buttonClicked(QAbstractButton* button) {
-
-	QAbstractButton* clickedButton = button;
-	
-	int ret = buttonBox->standardButton(button);
-	
-	//if (ret == QMessageBox::stand)
-	qDebug() << "return code: " << ret;
-	done(ret); // does not trigger closeEvent
-
-}
-
-void DkMessageBox::updateSize() {
-
-	if (!isVisible())
-		return;
-
-	QSize screenSize = QApplication::desktop()->availableGeometry(QCursor::pos()).size();
-#if defined(Q_OS_WINCE)
-	// the width of the screen, less the window border.
-	int hardLimit = screenSize.width() - (frameGeometry().width() - geometry().width());
-#else
-	int hardLimit = qMin(screenSize.width() - 480, 1000); // can never get bigger than this
-	// on small screens allows the messagebox be the same size as the screen
-	if (screenSize.width() <= 1024)
-		hardLimit = screenSize.width();
-#endif
-#ifdef Q_WS_MAC
-	int softLimit = qMin(screenSize.width()/2, 420);
-#else
-	// note: ideally on windows, hard and soft limits but it breaks compat
-#ifndef Q_OS_WINCE
-	int softLimit = qMin(screenSize.width()/2, 500);
-#else
-	int softLimit = qMin(screenSize.width() * 3 / 4, 500);
-#endif //Q_OS_WINCE
-#endif
-
-	textLabel->setWordWrap(false); // makes the label return min size
-	int width = minimumWidth();
-
-	if (width > softLimit) {
-		textLabel->setWordWrap(true);
-		width = qMax(softLimit, minimumWidth());
-
-		if (width > hardLimit)
-			width = hardLimit;
-	}
-
-	QFontMetrics fm(QApplication::font("QMdiSubWindowTitleBar"));
-	int windowTitleWidth = qMin(fm.width(windowTitle()) + 50, hardLimit);
-	if (windowTitleWidth > width)
-		width = windowTitleWidth;
-
-	this->setFixedSize(width, minimumHeight());
-	QCoreApplication::removePostedEvents(this, QEvent::LayoutRequest);
-
-}
 
 // file validator --------------------------------------------------------------------
 DkFileValidator::DkFileValidator(QString lastFile, QObject * parent) : QValidator(parent) {
@@ -408,7 +227,7 @@ void DkTrainDialog::loadFile(QString filePath) {
 		return;
 	}
 
-	if (DkImageLoader::fileFilters.join(" ").contains(fileInfo.suffix(), Qt::CaseInsensitive)) {
+	if (DkSettings::fileFilters.join(" ").contains(fileInfo.suffix(), Qt::CaseInsensitive)) {
 		userFeedback(tr("*.%1 is already supported.").arg(fileInfo.suffix()), false);
 		imgLoaded = false;
 	}
@@ -426,7 +245,7 @@ void DkTrainDialog::loadFile(QString filePath) {
 void DkTrainDialog::accept() {
 
 	// add the extension to user filters
-	if (!DkImageLoader::fileFilters.join(" ").contains(acceptedFile.suffix(), Qt::CaseInsensitive)) {
+	if (!DkSettings::fileFilters.join(" ").contains(acceptedFile.suffix(), Qt::CaseInsensitive)) {
 
 		QString name = QInputDialog::getText(this, "Format Name", tr("Please name the new format:"), QLineEdit::Normal, "Your File Format");
 		QString tag = name + " (*." + acceptedFile.suffix() + ")";
@@ -436,8 +255,8 @@ void DkTrainDialog::accept() {
 		QStringList userFilters = settings.value("ResourceSettings/userFilters", QStringList()).toStringList();
 		userFilters.append(tag);
 		settings.setValue("ResourceSettings/userFilters", userFilters);
-		DkImageLoader::openFilters.append(tag);
-		DkImageLoader::fileFilters.append("*." + acceptedFile.suffix());
+		DkSettings::openFilters.append(tag);
+		DkSettings::fileFilters.append("*." + acceptedFile.suffix());
 	}
 
 	QDialog::accept();
@@ -645,8 +464,9 @@ bool DkAppManager::containsApp(QVector<QAction* > apps, QString appName) {
 
 void DkAppManager::assignIcon(QAction* app) {
 
-#ifdef Q_WS_WIN
-#include <windows.h>
+#ifdef WIN32
+
+//#include <windows.h>
 
 	if (!app) {
 		qDebug() << "SERIOUS problem here, I should assign an icon to a NULL pointer action";
@@ -667,8 +487,8 @@ void DkAppManager::assignIcon(QAction* app) {
 	// CMakeLists.txt:
 	// if compile error that toWCharArray is not recognized:
 	// in msvc: Project Properties -> C/C++ -> Language -> Treat WChar_t as built-in type: set to No (/Zc:wchar_t-)
-	int dirLength = winPath.toWCharArray(wDirName);
-	wDirName[dirLength] = L'\0';	// append null character
+	wDirName = (WCHAR*)winPath.utf16();
+	wDirName[winPath.length()] = L'\0';	// append null character
 
 	int nIcons = ExtractIconExW(wDirName, 0, NULL, NULL, 0);
 
@@ -680,7 +500,7 @@ void DkAppManager::assignIcon(QAction* app) {
 	int err = ExtractIconExW(wDirName, 0, &largeIcon, &smallIcon, 1);
 
 	if (nIcons != 0 && largeIcon != NULL)
-		appIcon = QPixmap::fromWinHICON(smallIcon);
+		appIcon = DkImage::fromWinHICON(smallIcon);
 
 	DestroyIcon(largeIcon);
 	DestroyIcon(smallIcon);
@@ -769,6 +589,9 @@ void DkAppManagerDialog::createLayout() {
 	appTableView->resizeRowsToContents();
 	appTableView->setWordWrap(false);
 
+	QPushButton* runButton = new QPushButton(tr("&Run"), this);
+	runButton->setObjectName("runButton");
+
 	QPushButton* addButton = new QPushButton(tr("&Add"), this);
 	addButton->setObjectName("addButton");
 
@@ -782,6 +605,7 @@ void DkAppManagerDialog::createLayout() {
 	buttons->button(QDialogButtonBox::Cancel)->setText(tr("&Cancel"));
 	connect(buttons, SIGNAL(accepted()), this, SLOT(accept()));
 	connect(buttons, SIGNAL(rejected()), this, SLOT(reject()));
+	buttons->addButton(runButton, QDialogButtonBox::ActionRole);
 	buttons->addButton(addButton, QDialogButtonBox::ActionRole);
 	buttons->addButton(deleteButton, QDialogButtonBox::ActionRole);
 
@@ -809,11 +633,13 @@ void DkAppManagerDialog::on_addButton_clicked() {
 	// load system default open dialog
 	QString appFilter;
 	QString defaultPath;
-#ifdef Q_WS_WIN
+#ifdef WIN32
 	appFilter += tr("Executable Files (*.exe);;");
 	defaultPath = getenv("PROGRAMFILES");
-#else
+#elif QT_VERSION < 0x050000
 	defaultPath = QDesktopServices::storageLocation(QDesktopServices::ApplicationsLocation); // retrieves startmenu on windows?!
+#else
+	defaultPath = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation);	// still retrieves startmenu on windows
 #endif
 
 	QString filePath = QFileDialog::getOpenFileName(this, tr("Open Application"),
@@ -838,6 +664,26 @@ void DkAppManagerDialog::on_deleteButton_clicked() {
 		model->removeRows(selRows.last().row(), 1);
 		selRows.removeLast();
 	}
+}
+
+void DkAppManagerDialog::on_runButton_clicked() {
+
+	accept();
+
+	QItemSelectionModel* sel = appTableView->selectionModel();
+
+	if (!sel->hasSelection() && !manager->getActions().isEmpty())
+		emit openWithSignal(manager->getActions().first());
+	
+	else if (!manager->getActions().isEmpty()) {
+
+		QModelIndexList rows = sel->selectedRows();
+
+		for (int idx = 0; idx < rows.size(); idx++) {
+			emit openWithSignal(manager->getActions().at(rows.at(idx).row()));
+		}
+	}
+
 }
 
 void DkAppManagerDialog::accept() {
@@ -969,7 +815,7 @@ void DkSearchDialog::on_searchBar_textChanged(const QString& text) {
 		}
 	}
 
-	qDebug() << "searching takes: " << QString::fromStdString(dt.getTotal());
+	qDebug() << "searching takes: " << dt.getTotal();
 	currentSearch = text;
 
 	if (resultList.empty()) {
@@ -990,7 +836,7 @@ void DkSearchDialog::on_searchBar_textChanged(const QString& text) {
 		resultListView->setStyleSheet(defaultStyleSheet);
 	}
 
-	qDebug() << "searching takes (total): " << QString::fromStdString(dt.getTotal());
+	qDebug() << "searching takes (total): " << dt.getTotal();
 }
 
 void DkSearchDialog::on_resultListView_doubleClicked(const QModelIndex& modelIndex) {
@@ -1084,8 +930,10 @@ DkResizeDialog::DkResizeDialog(QWidget* parent, Qt::WindowFlags flags) : QDialog
 	init();
 }
 
-DkResizeDialog::~DkResizeDialog() {
+void DkResizeDialog::accept() {
 	saveSettings();
+
+	QDialog::accept();
 }
 
 void DkResizeDialog::saveSettings() {
@@ -1095,6 +943,16 @@ void DkResizeDialog::saveSettings() {
 
 	settings.setValue("ResampleMethod", resampleBox->currentIndex());
 	settings.setValue("Resample", resampleCheck->isChecked());
+	settings.setValue("CorrectGamma", gammaCorrection->isChecked());
+
+	if (sizeBox->currentIndex() == size_percent) {
+		settings.setValue("Width", wPixelEdit->value());
+		settings.setValue("Height", hPixelEdit->value());
+	}
+	else {
+		settings.setValue("Width", 0);
+		settings.setValue("Height", 0);
+	}
 }
 
 
@@ -1107,6 +965,28 @@ void DkResizeDialog::loadSettings() {
 
 	resampleBox->setCurrentIndex(settings.value("ResampleMethod", ipl_cubic).toInt());
 	resampleCheck->setChecked(settings.value("Resample", true).toBool());
+	gammaCorrection->setChecked(settings.value("CorrectGamma", true).toBool());
+
+	if (settings.value("Width", 0).toDouble() != 0) {
+
+		double w = settings.value("Width", 0).toDouble();
+		double h = settings.value("Height", 0).toDouble();
+
+		qDebug() << "width loaded from settings: " << w;
+
+		if (w != h) {
+			lockButton->setChecked(false);
+			lockButtonDim->setChecked(false);
+		}
+		sizeBox->setCurrentIndex(size_percent);
+
+		wPixelEdit->setValue(w);
+		hPixelEdit->setValue(h);
+		
+		updateWidth();
+		updateHeight();
+	}
+
 }
 
 void DkResizeDialog::init() {
@@ -1133,8 +1013,6 @@ void DkResizeDialog::init() {
 	wPixelEdit->setFocus(Qt::ActiveWindowFocusReason);
 
 	QMetaObject::connectSlotsByName(this);
-	loadSettings();
-
 }
 
 void DkResizeDialog::createLayout() {
@@ -1142,13 +1020,13 @@ void DkResizeDialog::createLayout() {
 	// central widget
 	centralWidget = new QWidget(this);
 
-	QWidget* previewWidget = new QWidget(this);
-	previewWidget->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+	//QLabel* previewWidget = new QLabel(this);
+	//previewWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	//previewWidget->setStyleSheet("QWidget{background-color: #CCC;}");
-	QGridLayout* previewLayout = new QGridLayout(previewWidget);
-	previewLayout->setAlignment(Qt::AlignHCenter);
-	previewLayout->setColumnStretch(0,1);
-	previewLayout->setColumnStretch(1,1);
+	//QGridLayout* previewLayout = new QGridLayout(previewWidget);
+	//previewLayout->setAlignment(Qt::AlignHCenter);
+	//previewLayout->setColumnStretch(0,1);
+	//previewLayout->setColumnStretch(1,1);
 
 	//// preview
 	//QSize s = QSize(width()-2*leftSpacing-10, width()-2*leftSpacing-10);
@@ -1160,7 +1038,9 @@ void DkResizeDialog::createLayout() {
 	int decimals = 2;
 
 	QLabel* origLabelText = new QLabel(tr("Original"));
+	origLabelText->setAlignment(Qt::AlignHCenter);
 	QLabel* newLabel = new QLabel(tr("New"));
+	newLabel->setAlignment(Qt::AlignHCenter);
 
 	// shows the original image
 	origView = new DkBaseViewPort(this);
@@ -1176,13 +1056,17 @@ void DkResizeDialog::createLayout() {
 
 	// shows the preview
 	previewLabel = new QLabel(this);
-	previewLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Ignored);
+	previewLabel->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+	//previewLabel->setScaledContents(true);
+	previewLabel->setMinimumHeight(100);
+	//previewLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Ignored);
+	//previewLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 	//previewLabel->setStyleSheet("QLabel{border: 1px solid #888;}");
 
-	previewLayout->addWidget(origLabelText, 0, 0);
-	previewLayout->addWidget(newLabel, 0, 1);
-	previewLayout->addWidget(origView, 1, 0);
-	previewLayout->addWidget(previewLabel, 1, 1);
+	//previewLayout->addWidget(origLabelText, 0, 0);
+	//previewLayout->addWidget(newLabel, 0, 1);
+	//previewLayout->addWidget(origView, 1, 0);
+	//previewLayout->addWidget(previewLabel, 1, 1);
 
 	// all text dialogs...
 	QIntValidator* intValidator = new QIntValidator(1, 100000, 0);
@@ -1315,6 +1199,11 @@ void DkResizeDialog::createLayout() {
 	gridLayout->addWidget(resampleCheck, 3, 1, 1, 3);
 	gridLayout->addWidget(resampleBox, 4, 1, 1, 3);
 
+	gammaCorrection = new QCheckBox(tr("Gamma Correction"));
+	gammaCorrection->setChecked(true);
+
+	gridLayout->addWidget(gammaCorrection, 5, 1, 1, 3);
+
 	// add stretch
 	gridLayout->setColumnStretch(6, 1);
 
@@ -1325,16 +1214,23 @@ void DkResizeDialog::createLayout() {
 	connect(buttons, SIGNAL(accepted()), this, SLOT(accept()));
 	connect(buttons, SIGNAL(rejected()), this, SLOT(reject()));
 
-	QVBoxLayout* layout = new QVBoxLayout(this);
-	layout->addWidget(previewWidget);
-	layout->addWidget(resizeBoxes);
+	QGridLayout* layout = new QGridLayout(this);
+	layout->setColumnStretch(0,1);
+	layout->setColumnStretch(1,1);
+
+	layout->addWidget(origLabelText, 0, 0);
+	layout->addWidget(newLabel, 0, 1);
+	layout->addWidget(origView, 1, 0);
+	layout->addWidget(previewLabel, 1, 1);
+	layout->addWidget(resizeBoxes, 2, 0, 1, 2, Qt::AlignLeft);
 	//layout->addStretch();
-	layout->addWidget(buttons);
+	layout->addWidget(buttons, 3, 0, 1, 2, Qt::AlignRight);
 	
-	show();
+	adjustSize();
+	//show();
 }
 
-void DkResizeDialog::initBoxes() {
+void DkResizeDialog::initBoxes(bool updateSettings) {
 
 	if (img.isNull())
 		return;
@@ -1354,6 +1250,9 @@ void DkResizeDialog::initBoxes() {
 
 	float height = (float)img.height()/exifDpi * units;
 	heightEdit->setValue(height);
+
+	if (updateSettings)
+		loadSettings();
 }
 
 void DkResizeDialog::updateWidth() {
@@ -1597,6 +1496,8 @@ void DkResizeDialog::updateSnippets() {
 	origView->fullView();
 	origView->zoomConstraints(origView->get100Factor());
 
+	qDebug() << "zoom constraint: " << origView->get100Factor();
+
 	//QSize s = QSize(width()-2*leftSpacing-10, width()-2*leftSpacing-10);
 	//s *= 0.5;
 	//origImg = QImage(s, QImage::Format_ARGB32);
@@ -1605,7 +1506,7 @@ void DkResizeDialog::updateSnippets() {
 
 	//QPainter painter(&origImg);
 	//painter.setBackgroundMode(Qt::TransparentMode);
-	//painter.drawImage(QRect(QPoint(), origImg.size()), img, imgRect);
+	//painter.drawImage(QRect(QPoint(), origImg.size()), img, imgRect;)
 	//painter.end();
 
 }
@@ -1616,11 +1517,14 @@ void DkResizeDialog::drawPreview() {
 		return;
 
 	newImg = origView->getCurrentImageRegion();
-	newImg = resizeImg(newImg);
+	QImage img = resizeImg(newImg);
 
 	//previewLabel->setScaledContents(true);
-	QSize s = QSize(previewLabel->width()-3, previewLabel->height()-3);	// fixes layout issues
-	QImage img = newImg.scaled(s, Qt::KeepAspectRatio, Qt::FastTransformation);
+
+	//QSize s = QSize(previewLabel->width(), previewLabel->height());	// fixes layout issues
+	//img = img.scaled(previewLabel->size(), Qt::KeepAspectRatio, Qt::FastTransformation);
+	
+	img = img.scaled(previewLabel->size(), Qt::KeepAspectRatio, Qt::FastTransformation);
 	previewLabel->setPixmap(QPixmap::fromImage(img));
 
 
@@ -1689,79 +1593,18 @@ QImage DkResizeDialog::resizeImg(QImage img, bool silent) {
 		}
 	}
 
-	Qt::TransformationMode iplQt;
-	switch(resampleBox->currentIndex()) {
-	case ipl_nearest:	
-	case ipl_area:		iplQt = Qt::FastTransformation; break;
-	case ipl_linear:	
-	case ipl_cubic:		
-	case ipl_lanczos:	iplQt = Qt::SmoothTransformation; break;
-	}
-#ifdef WITH_OPENCV
+	QImage rImg = DkImage::resizeImage(img, newSize, 1.0f, resampleBox->currentIndex(), gammaCorrection->isChecked());
 
-	int ipl = CV_INTER_CUBIC;
-	switch(resampleBox->currentIndex()) {
-	case ipl_nearest:	ipl = CV_INTER_NN; break;
-	case ipl_area:		ipl = CV_INTER_AREA; break;
-	case ipl_linear:	ipl = CV_INTER_LINEAR; break;
-	case ipl_cubic:		ipl = CV_INTER_CUBIC; break;
-#ifdef DISABLE_LANCZOS
-	case ipl_lanczos:	ipl = CV_INTER_CUBIC; break;
-#else
-	case ipl_lanczos:	ipl = CV_INTER_LANCZOS4; break;
-#endif
+	if (rImg.isNull() && !silent) {
+		qDebug() << "image size: " << newSize;
+		QMessageBox errorDialog(this);
+		errorDialog.setIcon(QMessageBox::Critical);
+		errorDialog.setText(tr("Sorry, the image is too large: %1").arg(DkImage::getBufferSize(newSize, 32)));
+		errorDialog.show();
+		errorDialog.exec();
 	}
 
-	try {
-		Mat resizeImage = DkImage::qImage2Mat(img);
-
-		// is the image convertible?
-		if (resizeImage.empty() || newSize.width() < 1 || newSize.height() < 1) {
-
-			return img.scaled(newSize, Qt::IgnoreAspectRatio, iplQt);
-		}
-		else {
-						
-			//QVector<QRgb> colTable = img.colorTable();
-			//qDebug() << "resizing..." << colTable.size();
-			qDebug() << "img format: " << img.format();
-
-			Mat tmp;
-			cv::resize(resizeImage, tmp, cv::Size(newSize.width(), newSize.height()), 0, 0, ipl);
-
-			QImage rImg = DkImage::mat2QImage(tmp);
-			qDebug() << "rImg format: " << img.format();
-
-			if (!rImg.colorTable().isEmpty())
-				rImg.setColorTable(img.colorTable());
-
-			qDebug() << "rImg (colTable) format: " << img.format();
-			return rImg;
-
-		}
-
-	}catch (std::exception se) {
-
-		if (!silent) {
-
-			qDebug() << "image size: " << newSize;
-			QMessageBox errorDialog(this);
-			errorDialog.setIcon(QMessageBox::Critical);
-			errorDialog.setText(tr("Sorry, the image is too large: %1").arg(DkImage::getBufferSize(newSize, 32)));
-			errorDialog.show();
-			errorDialog.exec();
-		}
-
-		return QImage();
-	}
-
-	return QImage();
-#else
-
-	return img.scaled(newSize, Qt::IgnoreAspectRatio, iplQt);
-
-#endif
-
+	return rImg;
 }
 
 // DkShortcutDelegate --------------------------------------------------------------------
@@ -2339,33 +2182,22 @@ DkPrintPreviewDialog::DkPrintPreviewDialog(QImage img, float dpi, QPrinter* prin
 	printDialog = 0;
 	imgTransform = QTransform();
 	init();
+	scaleImage();
 }
 
-void DkPrintPreviewDialog::init() {
-	
-	if (!printer) {
-#ifdef Q_WS_WIN
-		printer = new QPrinter(QPrinter::HighResolution);
-#else
-		printer = new QPrinter;
-#endif
-	}
-	
-	preview = new DkPrintPreviewWidget(printer, this);
-	connect(preview, SIGNAL(paintRequested(QPrinter*)), this, SLOT(paintRequested(QPrinter*)));
-	connect(preview, SIGNAL(zoomChanged()), this, SLOT(updateZoomFactor()));
-	
-	createIcons();
-	setup_Actions();
-	createLayout();
-	setMinimumHeight(600);
-	setMinimumWidth(800);
+void DkPrintPreviewDialog::setImage(QImage img, float dpi) {
+	this->img = img;
+	this->dpi = dpi;
+	imgTransform = QTransform();
+	scaleImage();
+}
 
+void DkPrintPreviewDialog::scaleImage() {
 	QRectF rect = printer->pageRect();
 	qreal scaleFactor;
 	QSizeF paperSize = printer->paperSize(QPrinter::Inch);
 	QRectF pageRectInch = printer->pageRect(QPrinter::Inch);
-	
+
 	// scale image to fit on paper
 	if (rect.width()/img.width() < rect.height()/img.height()) {
 		scaleFactor = rect.width()/(img.width()+FLT_EPSILON);		
@@ -2399,6 +2231,28 @@ void DkPrintPreviewDialog::init() {
 	updateZoomFactor();
 }
 
+void DkPrintPreviewDialog::init() {
+	
+	if (!printer) {
+#ifdef WIN32
+		printer = new QPrinter(QPrinter::HighResolution);
+#else
+		printer = new QPrinter;
+#endif
+	}
+	
+	preview = new DkPrintPreviewWidget(printer, this);
+	connect(preview, SIGNAL(paintRequested(QPrinter*)), this, SLOT(paintRequested(QPrinter*)));
+	connect(preview, SIGNAL(zoomChanged()), this, SLOT(updateZoomFactor()));
+	
+	createIcons();
+	setup_Actions();
+	createLayout();
+	setMinimumHeight(600);
+	setMinimumWidth(800);
+
+}
+
 void DkPrintPreviewDialog::createIcons() {
 
 	icons.resize(print_end);
@@ -2416,7 +2270,7 @@ void DkPrintPreviewDialog::createIcons() {
 	if (!DkSettings::display.defaultIconColor) {
 		// now colorize all icons
 		for (int idx = 0; idx < icons.size(); idx++)
-			icons[idx].addPixmap(DkUtils::colorizePixmap(icons[idx].pixmap(100), DkSettings::display.iconColor));
+			icons[idx].addPixmap(DkImage::colorizePixmap(icons[idx].pixmap(100), DkSettings::display.iconColor));
 	}
 }
 
@@ -2876,8 +2730,8 @@ void DkExportTiffDialog::createLayout() {
 	fileEdit->setObjectName("fileEdit");
 
 	suffixBox = new QComboBox(this);
-	suffixBox->addItems(DkImageLoader::saveFilters);
-	suffixBox->setCurrentIndex(DkImageLoader::saveFilters.indexOf(QRegExp(".*tif.*")));
+	suffixBox->addItems(DkSettings::saveFilters);
+	suffixBox->setCurrentIndex(DkSettings::saveFilters.indexOf(QRegExp(".*tif.*")));
 
 	// export handles
 	QLabel* exportLabel = new QLabel(tr("Export Pages"));
@@ -2939,7 +2793,7 @@ void DkExportTiffDialog::on_openButton_pressed() {
 	// load system default open dialog
 	QString fileName = QFileDialog::getOpenFileName(this, tr("Open TIFF"),
 		cFile.absolutePath(), 
-		DkImageLoader::saveFilters.filter(QRegExp(".*tif.*")).join(";;"));
+		DkSettings::saveFilters.filter(QRegExp(".*tif.*")).join(";;"));
 
 	setFile(fileName);
 }
@@ -2984,9 +2838,9 @@ void DkExportTiffDialog::accept() {
 
 	QString suffix = suffixBox->currentText();
 
-	for (int idx = 0; idx < DkImageLoader::fileFilters.size(); idx++) {
-		if (suffix.contains("(" + DkImageLoader::fileFilters.at(idx))) {
-			suffix = DkImageLoader::fileFilters.at(idx);
+	for (int idx = 0; idx < DkSettings::fileFilters.size(); idx++) {
+		if (suffix.contains("(" + DkSettings::fileFilters.at(idx))) {
+			suffix = DkSettings::fileFilters.at(idx);
 			suffix.replace("*","");
 			break;
 		}
@@ -3030,12 +2884,14 @@ int DkExportTiffDialog::exportImages(QFileInfo file, QFileInfo saveFile, int fro
 			f.remove();
 		}
 
-		bool saved = loader.save(sFile, loader.image(), 90);		//TODO: ask user for compression?
+		QFileInfo saveFile = loader.save(sFile, loader.image(), 90);		//TODO: ask user for compression?
+		saveFile.refresh();
 
-		if (!saved)
+		if (!saveFile.exists() || !saveFile.isFile())
 			emit infoMessage(tr("Sorry, I could not save: %1").arg(sFile.fileName()));
 
-		loader.loadPage(1);						// load next
+		if (!loader.loadPage(1))	// load next
+			emit infoMessage(tr("Sorry, I could not load page: %1").arg(idx));
 		emit updateImage(loader.image());
 		emit updateProgress(idx);
 
@@ -3088,6 +2944,188 @@ void DkExportTiffDialog::enableTIFFSave(bool enable) {
 }
 
 #ifdef WITH_OPENCV
+// DkUnsharpDialog --------------------------------------------------------------------
+DkUnsharpDialog::DkUnsharpDialog(QWidget* parent /* = 0 */, Qt::WindowFlags f /* = 0 */) : QDialog(parent, f) {
+
+	processing = false;
+
+	setWindowTitle(tr("Sharpen Image"));
+	createLayout();
+	//setFixedSize(340, 400);		// due to the baseViewport we need fixed sized dialogs : (
+	setAcceptDrops(true);
+
+	connect(this, SIGNAL(updateImage(QImage)), preview, SLOT(setImage(QImage)));
+	connect(&unsharpWatcher, SIGNAL(finished()), this, SLOT(unsharpFinished()));
+	connect(viewport, SIGNAL(imageUpdated()), this, SLOT(computePreview()));
+	QMetaObject::connectSlotsByName(this);
+}
+
+void DkUnsharpDialog::dropEvent(QDropEvent *event) {
+
+	if (event->mimeData()->hasUrls() && event->mimeData()->urls().size() > 0) {
+		QUrl url = event->mimeData()->urls().at(0);
+		url = url.toLocalFile();
+
+		setFile(url.toString());
+	}
+}
+
+void DkUnsharpDialog::dragEnterEvent(QDragEnterEvent *event) {
+
+	if (event->mimeData()->hasUrls()) {
+		QUrl url = event->mimeData()->urls().at(0);
+		url = url.toLocalFile();
+		QFileInfo file = QFileInfo(url.toString());
+
+		if (file.exists() && DkImageLoader::isValid(file))
+			event->acceptProposedAction();
+	}
+}
+
+void DkUnsharpDialog::createLayout() {
+
+	// post processing sliders
+	sigmaSlider = new DkSlider(tr("Sigma"), this);
+	sigmaSlider->setObjectName("sigmaSlider");
+	sigmaSlider->setValue(30);
+	//darkenSlider->hide();
+
+	amountSlider = new DkSlider(tr("Amount"), this);
+	amountSlider->setObjectName("amountSlider");
+	amountSlider->setValue(45);
+
+	QWidget* sliderWidget = new QWidget(this);
+	QVBoxLayout* sliderLayout = new QVBoxLayout(sliderWidget);
+	sliderLayout->addWidget(sigmaSlider);
+	sliderLayout->addWidget(amountSlider);
+
+	// shows the image if it could be loaded
+	viewport = new DkBaseViewPort(this);
+	viewport->setForceFastRendering(true);
+	viewport->setPanControl(QPointF(0.0f, 0.0f));
+
+	preview = new QLabel(this);
+	preview->setScaledContents(true);
+	preview->setMinimumSize(QSize(200,200));
+	//preview->setForceFastRendering(true);
+	//preview->setPanControl(QPointF(0.0f, 0.0f));
+
+	QWidget* viewports = new QWidget(this);
+	QGridLayout* viewLayout = new QGridLayout(viewports);
+	viewLayout->setColumnStretch(0,1);
+	viewLayout->setColumnStretch(1,1);
+
+	viewLayout->addWidget(viewport, 0,0);
+	viewLayout->addWidget(preview, 0, 1);
+
+	// buttons
+	buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal, this);
+	//buttons->button(QDialogButtonBox::Save)->setText(tr("&Save"));
+	//buttons->button(QDialogButtonBox::Apply)->setText(tr("&Generate"));
+	//buttons->button(QDialogButtonBox::Cancel)->setText(tr("&Cancel"));
+	connect(buttons, SIGNAL(accepted()), this, SLOT(accept()));
+	//connect(buttons, SIGNAL(clicked(QAbstractButton*)), this, SLOT(buttonClicked(QAbstractButton*)));
+	connect(buttons, SIGNAL(rejected()), this, SLOT(reject()));
+	//buttons->button(QDialogButtonBox::Save)->setEnabled(false);
+
+	QVBoxLayout* layout = new QVBoxLayout(this);
+	layout->addWidget(viewports);
+	layout->addWidget(sliderWidget);
+	layout->addWidget(buttons);
+}
+
+void DkUnsharpDialog::on_sigmaSlider_valueChanged(int i) {
+
+	computePreview();
+}
+
+void DkUnsharpDialog::on_amountSlider_valueChanged(int i) {
+
+	computePreview();
+}
+
+QImage DkUnsharpDialog::getImage() {
+
+	return computeUnsharp(img, sigmaSlider->value(), amountSlider->value());
+}
+
+void DkUnsharpDialog::reject() {
+
+	QDialog::reject();
+
+}
+
+//void DkMosaicDialog::buttonClicked(QAbstractButton* button) {
+//
+//	if (button == buttons->button(QDialogButtonBox::Save)) {
+//
+//		// render the full image
+//		if (!mosaic.isNull()) {
+//			sliderWidget->hide();
+//			progress->setValue(progress->minimum());
+//			progress->show();
+//			enableAll(false);
+//			button->setEnabled(false);
+//
+//			QFuture<bool> future = QtConcurrent::run(this, 
+//				&nmc::DkMosaicDialog::postProcessMosaic,
+//				darkenSlider->value()/100.0f,
+//				lightenSlider->value()/100.0f, 
+//				saturationSlider->value()/100.0f,
+//				false);
+//			postProcessWatcher.setFuture(future);
+//		}
+//	}
+//	else if (button == buttons->button(QDialogButtonBox::Apply))
+//		compute();
+//}
+
+void DkUnsharpDialog::computePreview() {
+		
+	if (processing)
+		return;
+
+	QFuture<QImage> future = QtConcurrent::run(this, 
+		&nmc::DkUnsharpDialog::computeUnsharp,
+		viewport->getCurrentImageRegion(),
+		sigmaSlider->value(),
+		amountSlider->value()); 
+	unsharpWatcher.setFuture(future);
+	processing = true;
+}
+
+void DkUnsharpDialog::unsharpFinished() {
+
+	QImage img = unsharpWatcher.result();
+	img = img.scaled(preview->size(), Qt::KeepAspectRatio, Qt::FastTransformation);
+	preview->setPixmap(QPixmap::fromImage(img));
+
+	//update();
+	processing = false;
+}
+
+QImage DkUnsharpDialog::computeUnsharp(const QImage img, int sigma, int amount) {
+
+	QImage imgC = img.copy();
+	DkImage::unsharpMask(imgC, sigma, 1.0f+amount/100.0f);
+	return imgC;
+}
+
+void DkUnsharpDialog::setImage(const QImage& img) {
+	this->img = img;
+	viewport->setImage(img);
+	viewport->fullView();
+	viewport->zoomConstraints(viewport->get100Factor());
+	computePreview();
+}
+
+void DkUnsharpDialog::setFile(const QFileInfo& file) {
+
+	DkBasicLoader loader;
+	loader.loadGeneral(file);
+	setImage(loader.image());
+}
+
 // DkMosaicDialog --------------------------------------------------------------------
 DkMosaicDialog::DkMosaicDialog(QWidget* parent /* = 0 */, Qt::WindowFlags f /* = 0 */) : QDialog(parent, f) {
 
@@ -3227,7 +3265,7 @@ void DkMosaicDialog::createLayout() {
 	filterEdit->setObjectName("fileEdit");
 	filterEdit->setToolTip(tr("You can split multiple ignore words with ;"));
 
-	QStringList filters = DkImageLoader::openFilters;
+	QStringList filters = DkSettings::openFilters;
 	filters.pop_front();	// replace for better readability
 	filters.push_front("All Images");
 	suffixBox = new QComboBox(this);
@@ -3302,7 +3340,7 @@ void DkMosaicDialog::on_openButton_pressed() {
 	// load system default open dialog
 	QString fileName = QFileDialog::getOpenFileName(this, tr("Open TIFF"),
 		cFile.absolutePath(), 
-		DkImageLoader::openFilters.join(";;"));
+		DkSettings::openFilters.join(";;"));
 
 	setFile(fileName);
 }
@@ -3472,9 +3510,9 @@ void DkMosaicDialog::compute() {
 	QString suffixTmp = suffixBox->currentText();
 	QString suffix;
 
-	for (int idx = 0; idx < DkImageLoader::fileFilters.size(); idx++) {
-		if (suffixTmp.contains("(" + DkImageLoader::fileFilters.at(idx))) {
-			suffix = DkImageLoader::fileFilters.at(idx);
+	for (int idx = 0; idx < DkSettings::fileFilters.size(); idx++) {
+		if (suffixTmp.contains("(" + DkSettings::fileFilters.at(idx))) {
+			suffix = DkSettings::fileFilters.at(idx);
 			break;
 		}
 	}
@@ -3742,7 +3780,7 @@ int DkMosaicDialog::computeMosaic(QFileInfo file, QString filter, QString suffix
 
 	processing = false;
 
-	qDebug() << "mosaic computed in: " << QString::fromStdString(dt.getTotal());
+	qDebug() << "mosaic computed in: " << dt.getTotal();
 
 	return QDialog::Accepted;
 }
@@ -3776,7 +3814,7 @@ cv::Mat DkMosaicDialog::createPatch(const DkThumbNail& thumb, int patchRes) {
 	// load full image if we have not enough resolution
 	if (qMin(thumb.getImage().width(), thumb.getImage().height()) < patchRes) {
 		DkBasicLoader loader;
-		loader.loadGeneral(thumb.getFile(), true);
+		loader.loadGeneral(thumb.getFile(), true, true);
 		img = loader.image();
 	}
 	else
@@ -3814,7 +3852,7 @@ QString DkMosaicDialog::getRandomImagePath(const QString& cPath, const QString& 
 
 	// TODO: remove hierarchy
 
-	QStringList fileFilters = (suffix.isEmpty()) ? DkImageLoader::fileFilters : QStringList(suffix);
+	QStringList fileFilters = (suffix.isEmpty()) ? DkSettings::fileFilters : QStringList(suffix);
 
 	// get all dirs
 	QFileInfoList entries = QDir(cPath).entryInfoList(QStringList(), QDir::AllDirs | QDir::NoDotAndDotDot);

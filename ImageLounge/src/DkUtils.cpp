@@ -36,12 +36,11 @@ int nmc::DkUtils::debugLevel = DK_MODULE;
 namespace nmc {
 
 // code based on: http://stackoverflow.com/questions/8565430/complete-these-3-methods-with-linux-and-mac-code-memory-info-platform-independe
-
 double DkMemory::getTotalMemory() {
 
 	double mem = -1;
 
-#ifdef Q_WS_WIN
+#ifdef WIN32
 
 	MEMORYSTATUSEX MemoryStatus;
 	ZeroMemory(&MemoryStatus, sizeof(MEMORYSTATUSEX));
@@ -75,7 +74,7 @@ double DkMemory::getFreeMemory() {
 	double mem = -1;
 	
 
-#ifdef Q_WS_WIN
+#ifdef WIN32
 
 	MEMORYSTATUSEX MemoryStatus;
 
@@ -107,6 +106,93 @@ double DkMemory::getFreeMemory() {
 }
 
 // DkUtils --------------------------------------------------------------------
+#ifdef WIN32
+
+bool DkUtils::wCompLogic(const std::wstring & lhs, const std::wstring & rhs) {
+	return StrCmpLogicalW(lhs.c_str(),rhs.c_str()) < 0;
+	//return true;
+}
+
+bool DkUtils::compLogicQString(const QString & lhs, const QString & rhs) {
+#if QT_VERSION < 0x050000
+	return wCompLogic(lhs.toStdWString(), rhs.toStdWString());
+	//return true;
+#else
+	return wCompLogic((wchar_t*)lhs.utf16(), (wchar_t*)rhs.utf16());	// TODO: is this nice?
+#endif
+}
+#else
+bool DkUtils::compLogicQString(const QString & lhs, const QString & rhs) {
+
+	//// check if the filenames are just numbers
+	//bool isNum;
+	//int lhn = lhs.left(lhs.lastIndexOf(".")).toInt(&isNum);
+	//qDebug() << "lhs dot idx: " << lhs.lastIndexOf(".");
+	//if (isNum) {
+	//	int rhn = rhs.left(rhs.lastIndexOf(".")).toInt(&isNum);
+	//	qDebug() << "left is a number...";
+
+	//	if (isNum) {
+	//		qDebug() << "comparing numbers...";
+	//		return lhn < rhn;
+	//	}
+	//}
+
+	// number compare
+	QRegExp r("\\d+");
+
+	if (lhs.indexOf(r) >= 0) {
+
+		long long lhn = r.cap().toLongLong();
+
+		// we don't just want to find two numbers
+		// but we want them to be at the same position
+		if (rhs.indexOf(r) >= 0 && r.indexIn(lhs) == r.indexIn(rhs))
+			return lhn < r.cap().toLongLong();
+
+	}
+
+	return lhs.localeAwareCompare(rhs) < 0;
+}
+
+#endif
+
+bool DkUtils::compDateCreated(const QFileInfo& lhf, const QFileInfo& rhf) {
+
+	return lhf.created() < rhf.created();
+}
+
+bool DkUtils::compDateCreatedInv(const QFileInfo& lhf, const QFileInfo& rhf) {
+
+	return !compDateCreated(lhf, rhf);
+}
+
+bool DkUtils::compDateModified(const QFileInfo& lhf, const QFileInfo& rhf) {
+
+	return lhf.lastModified() < rhf.lastModified();
+}
+
+bool DkUtils::compDateModifiedInv(const QFileInfo& lhf, const QFileInfo& rhf) {
+
+	return !compDateModified(lhf, rhf);
+}
+
+bool DkUtils::compFilename(const QFileInfo& lhf, const QFileInfo& rhf) {
+
+	return compLogicQString(lhf.fileName(), rhf.fileName());
+}
+
+bool DkUtils::compFilenameInv(const QFileInfo& lhf, const QFileInfo& rhf) {
+
+	return !compFilename(lhf, rhf);
+}
+
+bool DkUtils::compRandom(const QFileInfo& lhf, const QFileInfo& rhf) {
+
+	return qrand() % 2;
+}
+
+
 void DkUtils::mSleep(int ms) {
 
 #ifdef Q_OS_WIN
@@ -141,6 +227,24 @@ bool DkUtils::exists(const QFileInfo& file, int waitMs) {
 bool DkUtils::checkFile(const QFileInfo& file) {
 
 	return file.exists();
+}
+
+// code from: http://stackoverflow.com/questions/5625884/conversion-of-stdwstring-to-qstring-throws-linker-error
+std::wstring DkUtils::qStringToStdWString(const QString &str) {
+#ifdef _MSC_VER
+	return std::wstring((const wchar_t *)str.utf16());
+#else
+	return str.toStdWString();
+#endif
+}
+
+// code from: http://stackoverflow.com/questions/5625884/conversion-of-stdwstring-to-qstring-throws-linker-error
+QString DkUtils::stdWStringToQString(const std::wstring &str) {
+#ifdef _MSC_VER
+	return QString::fromUtf16((const ushort *)str.c_str());
+#else
+	return QString::fromStdWString(str);
+#endif
 }
 
 

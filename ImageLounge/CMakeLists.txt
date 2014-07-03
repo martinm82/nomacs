@@ -12,18 +12,24 @@ PROJECT(nomacs)
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 if(COMMAND cmake_policy)
-      cmake_policy(SET CMP0003 NEW)
+	cmake_policy(SET CMP0003 NEW)
+	  
+	if (CMAKE_VERSION VERSION_GREATER 2.8.10)
+		cmake_policy(SET CMP0020 NEW)	# qt warnings
+	endif ()
 endif(COMMAND cmake_policy)
 
 
 OPTION (ENABLE_RAW "Compile with raw images support (OpenCV, libraw)" ON)
 OPTION (ENABLE_WEBP "Compile with webP support (webP)" ON)
 OPTION (ENABLE_TIFF "Compile with multi-layer tiff" ON)
+OPTION (ENABLE_UPNP "Compile with UPNP" OFF)
 OPTION (DISABLE_QT_DEBUG "Disable Qt Debug Messages" OFF)
 OPTION (ENABLE_NIKON "Compile with Nikon camera support" ON)
+OPTION (ENABLE_QT5 "Compile with Qt5 (Qt5)" OFF)
 
 
-set(NOMACS_VERSION 1.6.3)
+set(NOMACS_VERSION 2.0.1)
 add_definitions(-DNOMACS_VERSION="${NOMACS_VERSION}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "debug" OR CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "DEBUG")
@@ -49,11 +55,38 @@ ENDIF(MSVC)
 #set(BUILD_EXAMPLES OFF CACHE BOOL "Build all examples")
 
 # find the Qt
-set(QT_MIN_VERSION "4.7.0")
-set(QT_USE_GUI 1)
-set(QT_USE_QTNETWORK 1)
-find_package(Qt4 REQUIRED QtCore QtGui QtNetwork)
-include(${QT_USE_FILE})
+if (NOT ENABLE_QT5)
+	set(QT_MIN_VERSION "4.7.0")
+	set(QT_USE_GUI 1)
+	set(QT_USE_QTNETWORK 1)
+	IF(ENABLE_UPNP)
+		find_package(Qt4 REQUIRED QtCore QtGui QtNetwork QtXml)
+	ELSE()
+		 find_package(Qt4 REQUIRED QtCore QtGui QtNetwork)
+	ENDIF(ENABLE_UPNP)
+	
+	find_package(Qt4 REQUIRED QtCore QtGui QtNetwork)
+	
+	include(${QT_USE_FILE})
+ELSE()
+	set(CMAKE_INCLUDE_CURRENT_DIR ON)
+	message(STATUS "qmake path: ${QT_QMAKE_EXECUTABLE}")
+	GET_FILENAME_COMPONENT(QT_QMAKE_PATH ${QT_QMAKE_EXECUTABLE} PATH)
+	set(CMAKE_PREFIX_PATH ${QT_QMAKE_PATH}\\..\\lib\\cmake\\Qt5Widgets ${QT_QMAKE_PATH}\\..\\lib\\cmake\\Qt5Network ${QT_QMAKE_PATH}\\..\\lib\\cmake\\Qt5LinguistTools ${QT_QMAKE_PATH}\\..\\lib\\cmake\\Qt5PrintSupport ${QT_QMAKE_PATH}\\..\\lib\\cmake\\Qt5Concurrent)
+	message(STATUS "path: ${QT_QMAKE_PATH}")
+	message(STATUS "cmake path: ${CMAKE_PREFIX_PATH}")
+	
+	find_package(Qt5Widgets)
+	find_package(Qt5Network)
+	find_package(Qt5LinguistTools)
+	find_package(Qt5PrintSupport)
+	find_package(Qt5Concurrent)
+	
+	set(QT_INCLUDES ${Qt5Widgets_INCLUDE_DIRS} ${Qt5LinguistTools_INCLUDE_DIRS} ${Qt5Network_INCLUDE_DIRS} ${Qt5PrintSupport_INCLUDE_DIRS} ${Qt5Concurrent_INCLUDE_DIRS})
+
+	message(STATUS "QT_INCLUDES: ${QT_INCLUDES}")
+	add_definitions(-DQT5)
+ENDIF(NOT ENABLE_QT5)
 
 find_package(PkgConfig)
 #IF (NOT PkgConfig_FOUND AND NOT MSVC)
@@ -180,7 +213,6 @@ IF(ENABLE_NIKON)
 ENDIF(ENABLE_NIKON)
 
 IF (ENABLE_RAW)
-
 	# NOTE: libraw is used only when there is OpenCV found and used
 	# LibRaw
 	pkg_check_modules(LIBRAW  libraw>=0.12.0)
@@ -189,12 +221,12 @@ IF (ENABLE_RAW)
         ENDIF()
 	IF (NOT LIBRAW_FOUND AND MSVC)
 	
-        	find_path(LIBRAW_INCLUDE_DIRS "libraw/libraw.h" PATHS "../LibRaw-0.13.5/" DOC "Path to libraw/libraw.h" NO_DEFAULT_PATH)
+        	find_path(LIBRAW_INCLUDE_DIRS "libraw/libraw.h" PATHS "../LibRaw-0.16.0/" DOC "Path to libraw/libraw.h" NO_DEFAULT_PATH)
 
 			if(CMAKE_CL_64)
-				SET(LIBRAW_SEARCH_PATH "../LibRaw-0.13.5/buildfiles/x64")
+				SET(LIBRAW_SEARCH_PATH "../LibRaw-0.16.0/buildfiles/x64")
 			else()
-				SET(LIBRAW_SEARCH_PATH "../LibRaw-0.13.5/buildfiles/Win32")
+				SET(LIBRAW_SEARCH_PATH "../LibRaw-0.16.0/buildfiles/Win32")
 			endif()
 			
         	find_path(LIBRAW_BUILD_PATH NAMES "release/libraw.lib" "release/libraw.dll" "debug/libraw.lib" "debug/libraw.dll"
@@ -215,17 +247,14 @@ IF (ENABLE_RAW)
                 	SET(LIBRAW_LIBRARIES optimized libraw.lib debug libraw.lib)
 
                 	SET(LIBRAW_FOUND true)
-                	SET(LIBRAW_VERSION 0.13.5)
         	ELSE()
                 	message(WARNING "libraw build directory not found. Needs path which contains release/libraw.dll, release/libraw.lib, debug/libraw.dll and debug/libraw.lib")
         	ENDIF()
 	ENDIF(NOT LIBRAW_FOUND AND MSVC)
-    IF (LIBRAW_VERSION VERSION_GREATER 0.14.0 OR LIBRAW_VERSION VERSION_EQUAL 0.14.0 )
-      add_definitions(-DLIBRAW_VERSION_14)
-    endif()
 	          
 	# OpenCV
 	SET(OpenCV_LIBS "")
+	SET(OpenCV_FOUND false)
 	if (PKG_CONFIG_FOUND) # not sure: pkgconfig is needed for old linux  with old old opencv systems
 		pkg_check_modules(OpenCV  opencv>=2.1.0)
 		SET(OpenCV_LIBS ${OpenCV_LIBRARIES})
@@ -263,10 +292,13 @@ IF (ENABLE_RAW)
 ENDIF(ENABLE_RAW)
 
 #multi-layer tiff
-IF(ENABLE_TIFF)
-		
+IF(ENABLE_TIFF)	
 	# we try to grab the OpenCV's libtiff
 	IF (MSVC)
+		IF(NOT OpenCV_FOUND)
+			message(FATAL_ERROR "OpenCV is mandotory when enabling TIFF. You have to enable RAW support")
+		ENDIF(NOT OpenCV_FOUND)
+
 		find_path(TIFF_BUILD_PATH NAMES "Release/libtiff.lib" "Debug/libtiffd.lib" PATHS "${OpenCV_3RDPARTY_LIB_DIR_OPT}/../" DOC "Path to the libtiff build directory" NO_DEFAULT_PATH)
 		IF(EXISTS "${TIFF_BUILD_PATH}/Release/libtiff.lib" AND EXISTS "${TIFF_BUILD_PATH}/Debug/libtiffd.lib")
 			FILE(COPY ${TIFF_BUILD_PATH}/Debug/libtiffd.lib DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/libs)
@@ -283,9 +315,11 @@ IF(ENABLE_TIFF)
 
 		IF(TIFF_LIBRARIES AND EXISTS ${TIFF_CONFIG_DIR} AND EXISTS ${TIFF_INCLUDE_DIR})
 			add_definitions(-DWITH_LIBTIFF)
-		ELSE()
-			message(FATAL_ERROR "libtiff not found. It's mandatory when used with ENABLE_TIFF enabled.")
+		ELSE(NOT EXISTS ${TIFF_CONFIG_DIR})
+			message(FATAL_ERROR "TIFF_CONFIG_DIR dir not found. Needs path which contains Release/libtiff.lib and debug/libtiffd.lib")
 			message(FATAL_ERROR "opencv dir: ${OpenCV_DIR}")
+		ELSE(NOT EXISTS ${TIFF_INCLUDE_DIR})
+			message(FATAL_ERROR "TIFF_INCLUDE_DIR not found. Needs path which contains tif_config.h. Usually located in OpenCV Source directory ./3rdparty/libtiff")
 		ENDIF()
 
 	ELSE()
@@ -303,6 +337,33 @@ IF(ENABLE_TIFF)
 ENDIF(ENABLE_TIFF)
 
 	
+IF(ENABLE_UPNP)
+	find_package(HUpnp)
+	#TODO LINUX/MAC/...
+	IF(MSVC)
+		IF(HUpnp_FOUND)
+			IF(MSVC)
+				FILE(COPY ${HUPNP_LIB_DIR}/Release/HUpnp.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
+				FILE(COPY ${HUPNP_LIB_DIR}/Release/HUpnp.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/ReallyRelease)
+				FILE(COPY ${HUPNP_LIB_DIR}/Release/HUpnpAV.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
+				FILE(COPY ${HUPNP_LIB_DIR}/Release/HUpnpAV.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/ReallyRelease)			
+				FILE(COPY ${HUPNP_LIB_DIR}/Release/QtSoap27.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
+				FILE(COPY ${HUPNP_LIB_DIR}/Release/QtSoap27.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/ReallyRelease)
+
+				FILE(COPY ${HUPNP_LIB_DIR}/Debug/HUpnpd.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+				FILE(COPY ${HUPNP_LIB_DIR}/Debug/HUpnpAVd.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+				FILE(COPY ${HUPNP_LIB_DIR}/Debug/QtSoap27d.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+			ENDIF(MSVC)
+			add_definitions(-DWITH_UPNP)
+		ENDIF(HUpnp_FOUND)
+	ELSE(MSVC) # not really working, just for testing
+	# not working due to HAav library ... look for other solutions
+#		find_path(HUPNP_INCLUDE_DIR NAMES "HUpnpCore/"  PATHS "/usr/include" DOC "Path to the hupnp include directory" NO_DEFAULT_PATH)
+#        set(HUPNP_LIBS "HUpnp")
+#		add_definitions(-DWITH_UPNP)
+	ENDIF(MSVC)
+ENDIF(ENABLE_UPNP)
+	
 include_directories (
 	${QT_INCLUDES}
 	${EXIV2_INCLUDE_DIRS}
@@ -313,6 +374,7 @@ include_directories (
 	${WEBP_INCLUDE_DIR}
 	${TIFF_INCLUDE_DIR}
 	${TIFF_CONFIG_DIR}
+	${HUPNP_INCLUDE_DIR}
 )
 
 # set (NOMACS_SOURCES
@@ -323,6 +385,7 @@ include_directories (
         # src/DkConnection.cpp
         # src/DkNetwork.cpp
         # src/DkNoMacs.cpp
+		# src/DkPluginManager.cpp
 		# src/DkPong.cpp
         # src/DkTimer.cpp
         # src/DkUtils.cpp
@@ -350,6 +413,11 @@ file(GLOB LIBQPSD_SOURCES "libqpsd/*.cpp")
 file(GLOB LIBQPSD_HEADERS "libqpsd/*.h")
 file(GLOB LIBQPSD_MOCS "libqpsd/*.h")
 
+IF(NOT ENABLE_UPNP)
+	LIST(REMOVE_ITEM NOMACS_SOURCES ${CMAKE_SOURCE_DIR}/src/DkUpnp.cpp)
+	LIST(REMOVE_ITEM NOMACS_MOCS ${CMAKE_SOURCE_DIR}/src/DkUpnp.h)
+	LIST(REMOVE_ITEM NOMACS_HEADERS ${CMAKE_SOURCE_DIR}/src/DkUpnp.h)
+ENDIF(NOT ENABLE_UPNP)
 
 if (APPLE)
     SET (NOMACS_SOURCES ${NOMACS_SOURCES} macosx/nomacs.icns)
@@ -390,13 +458,20 @@ else(MSVC)
 	SET(VERSION_LIB "")
 ENDIF(MSVC)
 
-QT4_ADD_TRANSLATION(NOMACS_QM ${NOMACS_TRANSLATIONS})
-QT4_WRAP_UI(NOMACS_UI ${NOMACS_FORMS})
-QT4_WRAP_CPP(NOMACS_MOC_SRC ${NOMACS_MOCS})
-QT4_ADD_RESOURCES(NOMACS_RCC ${NOMACS_RESOURCES})
-
-QT4_WRAP_CPP(LIBQPSD_MOC_SRC ${LIBQPSD_MOCS})
-
+IF (NOT ENABLE_QT5)
+	QT4_ADD_TRANSLATION(NOMACS_QM ${NOMACS_TRANSLATIONS})
+	QT4_WRAP_UI(NOMACS_UI ${NOMACS_FORMS})
+	QT4_WRAP_CPP(NOMACS_MOC_SRC ${NOMACS_MOCS})
+	QT4_ADD_RESOURCES(NOMACS_RCC ${NOMACS_RESOURCES})
+	QT4_WRAP_CPP(LIBQPSD_MOC_SRC ${LIBQPSD_MOCS})
+ELSE()
+	QT5_ADD_TRANSLATION(NOMACS_QM ${NOMACS_TRANSLATIONS})
+	QT5_WRAP_UI(NOMACS_UI ${NOMACS_FORMS})
+	QT5_WRAP_CPP(NOMACS_MOC_SRC ${NOMACS_MOCS})
+	QT5_ADD_RESOURCES(NOMACS_RCC ${NOMACS_RESOURCES})
+	QT5_WRAP_CPP(LIBQPSD_MOC_SRC ${LIBQPSD_MOCS})
+ENDIF()
+	
 #IF (EXIV2_FOUND AND LIBRAW_FOUND AND OpenCV_FOUND OR NOT COMPILEWITHOPENCV)
 IF (EXIV2_FOUND)
 	
@@ -414,28 +489,29 @@ IF (EXIV2_FOUND)
 		link_directories(${LIBRAW_LIBRARY_DIRS} ${OpenCV_LIBRARY_DIRS} ${EXIV2_LIBRARY_DIRS})
 		add_executable(${EXE_NAME} WIN32  MACOSX_BUNDLE src/main.cpp ${NOMACS_MOC_SRC_SU} ${NOMACS_QM} ${NOMACS_TRANSLATIONS} ${NOMACS_RC})
 		target_link_libraries(${EXE_NAME} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTMAIN_LIBRARY} ${VERSION_LIB} ${LIB_NAME})
-		
-		set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "-DDK_DLL_IMPORT")
+
+		set_target_properties(${EXE_NAME} PROPERTIES COMPILE_FLAGS "-DDK_DLL_IMPORT -DNOMINMAX")
 		set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS_REALLYRELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /SUBSYSTEM:WINDOWS /LARGEADDRESSAWARE")
 		set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /SUBSYSTEM:CONSOLE /LARGEADDRESSAWARE")
 		set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /SUBSYSTEM:CONSOLE /LARGEADDRESSAWARE")
 		set_target_properties(${EXE_NAME} PROPERTIES IMPORTED_IMPLIB "")
 				
 		add_library(${DLL_NAME} SHARED ${NOMACS_SOURCES} ${NOMACS_UI} ${NOMACS_MOC_SRC} ${NOMACS_RCC} ${NOMACS_HEADERS} ${NOMACS_RC} ${LIBQPSD_SOURCES} ${LIBQPSD_HEADERS} ${LIBQPSD_MOC_SRC} ${WEBP_SOURCE})
-		target_link_libraries(${DLL_NAME} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTMAIN_LIBRARY} ${EXIV2_LIBRARIES} ${LIBRAW_LIBRARIES} ${OpenCV_LIBS} ${VERSION_LIB} ${TIFF_LIBRARIES})
+		target_link_libraries(${DLL_NAME} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTNETWORK_LIBRARY} ${QT_QTMAIN_LIBRARY} ${EXIV2_LIBRARIES} ${LIBRAW_LIBRARIES} ${OpenCV_LIBS} ${VERSION_LIB} ${TIFF_LIBRARIES} ${HUPNP_LIBS} ${HUPNPAV_LIBS})
 		add_dependencies(${EXE_NAME} ${DLL_NAME})
 		
-		
+		if (ENABLE_QT5)
+			qt5_use_modules(${EXE_NAME} Widgets Gui Network LinguistTools PrintSupport)
+			qt5_use_modules(${DLL_NAME} Widgets Gui Network LinguistTools PrintSupport)
+		ENDIF()
 		
 		SET(CMAKE_SHARED_LINKER_FLAGS_REALLYRELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /SUBSYSTEM:WINDOWS /LARGEADDRESSAWARE") # /subsystem:windows does not work due to a bug in cmake (see http://public.kitware.com/Bug/view.php?id=12566)
 
 		set_target_properties(${DLL_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_BINARY_DIR}/libs)
 		set_target_properties(${DLL_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_BINARY_DIR}/libs)
 		set_target_properties(${DLL_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_REALLYRELEASE ${CMAKE_CURRENT_BINARY_DIR}/libs)
-		
-		
-		
-		set_target_properties(${DLL_NAME} PROPERTIES COMPILE_FLAGS "-DDK_DLL_EXPORT")
+						
+		set_target_properties(${DLL_NAME} PROPERTIES COMPILE_FLAGS "-DDK_DLL_EXPORT -DNOMINMAX")
 		set_target_properties(${DLL_NAME} PROPERTIES LINK_FLAGS_REALLYRELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /SUBSYSTEM:WINDOWS /LARGEADDRESSAWARE")
 		set_target_properties(${DLL_NAME} PROPERTIES LINK_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /SUBSYSTEM:CONSOLE /LARGEADDRESSAWARE")
 		set_target_properties(${DLL_NAME} PROPERTIES LINK_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /SUBSYSTEM:CONSOLE /LARGEADDRESSAWARE")
@@ -483,14 +559,39 @@ IF (EXIV2_FOUND)
 			FILE(COPY ${dllpath} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
 		ENDFOREACH(opencvlib)
 		
-		SET (QTLIBLIST QtCore QtGui QtNetwork)
-		FOREACH(qtlib ${QTLIBLIST})
-			GET_FILENAME_COMPONENT(QT_DLL_PATH_tmp ${QT_QMAKE_EXECUTABLE} PATH)
-			FILE(COPY ${QT_DLL_PATH_tmp}/${qtlib}4.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
-			FILE(COPY ${QT_DLL_PATH_tmp}/${qtlib}4.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/ReallyRelease)
-			FILE(COPY ${QT_DLL_PATH_tmp}/${qtlib}d4.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
-		ENDFOREACH(qtlib)
+		IF (NOT ENABLE_QT5)
+			IF(ENABLE_UPNP)
+				SET (QTLIBLIST QtCore QtGui QtNetwork QtXml)
+			ELSE()
+				SET (QTLIBLIST QtCore QtGui QtNetwork)
+			ENDIF(ENABLE_UPNP)
+			
+			FOREACH(qtlib ${QTLIBLIST})
+				GET_FILENAME_COMPONENT(QT_DLL_PATH_tmp ${QT_QMAKE_EXECUTABLE} PATH)
+				FILE(COPY ${QT_DLL_PATH_tmp}/${qtlib}4.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
+				FILE(COPY ${QT_DLL_PATH_tmp}/${qtlib}4.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/ReallyRelease)
+				FILE(COPY ${QT_DLL_PATH_tmp}/${qtlib}d4.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+			ENDFOREACH(qtlib)
+		ELSE()
 		
+			SET (QTLIBLIST Qt5Core Qt5Gui Qt5Network Qt5Widgets Qt5PrintSupport Qt5Concurrent)
+			FOREACH(qtlib ${QTLIBLIST})
+				GET_FILENAME_COMPONENT(QT_DLL_PATH_tmp ${QT_QMAKE_EXECUTABLE} PATH)
+				FILE(COPY ${QT_DLL_PATH_tmp}//..//lib/${qtlib}.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
+				FILE(COPY ${QT_DLL_PATH_tmp}//..//lib/${qtlib}.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/ReallyRelease)
+				FILE(COPY ${QT_DLL_PATH_tmp}//..//lib/${qtlib}d.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+			ENDFOREACH(qtlib)
+
+			FILE(COPY ${QT_DLL_PATH_tmp}//libGLESv2.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
+			FILE(COPY ${QT_DLL_PATH_tmp}//libGLESv2.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/ReallyRelease)
+			FILE(COPY ${QT_DLL_PATH_tmp}//libGLESv2d.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+
+			FILE(COPY ${QT_DLL_PATH_tmp}//libEGL.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release)
+			FILE(COPY ${QT_DLL_PATH_tmp}//libEGL.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/ReallyRelease)
+			FILE(COPY ${QT_DLL_PATH_tmp}//libEGLd.dll DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug)
+			
+			
+		ENDIF(NOT ENABLE_QT5)
 		
 		# copy msvcp110.dll to Really Release
 		if (CMAKE_GENERATOR STREQUAL "Visual Studio 11" OR  CMAKE_GENERATOR STREQUAL "Visual Studio 11 Win64")
@@ -537,7 +638,7 @@ IF (EXIV2_FOUND)
 		set_target_properties(${EXE_NAME} PROPERTIES LINK_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /SUBSYSTEM:CONSOLE /LARGEADDRESSAWARE")
 		
 		SET(_moc ${CMAKE_CURRENT_BINARY_DIR}/GeneratedFiles)
-		SOURCE_GROUP("Generated Files" FILES ${NOMACS_MOC_SRC} ${LIBQPSD_MOCS} ${NOMACS_RCC} ${NOMACS_UI} ${NOMACS_RC} ${NOMACS_QM})
+		SOURCE_GROUP("Generated Files" FILES ${NOMACS_MOC_SRC} ${LIBQPSD_MOCS_SRC} ${NOMACS_RCC} ${NOMACS_UI} ${NOMACS_RC} ${NOMACS_QM})
 		set_source_files_properties(${NOMACS_TRANSLATIONS} PROPERTIES HEADER_FILE_ONLY TRUE)
 		SOURCE_GROUP("Translations" FILES ${NOMACS_TRANSLATIONS})
 		SOURCE_GROUP("libqpsd" FILES ${LIBQPSD_SOURCES} ${LIBQPSD_HEADERS})
@@ -555,8 +656,8 @@ IF (EXIV2_FOUND)
 		install(FILES src/img/nomacs.png DESTINATION share/pixmaps)
 		#  translations
 		install(FILES ${NOMACS_QM} DESTINATION share/nomacs/translations)
-                #  manpage
-                install(FILES Readme/nomacs.1 DESTINATION share/man/man1)
+		#  manpage
+		install(FILES Readme/nomacs.1 DESTINATION share/man/man1)
 
 
 		# "make dist" target

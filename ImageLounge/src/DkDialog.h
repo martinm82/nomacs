@@ -27,6 +27,11 @@
 
 #pragma once
 
+#ifdef WIN32
+#include <winsock2.h>	// needed since libraw 0.16
+#endif
+
+#include <QWidget>
 #include <QDialog>
 #include <QLabel>
 #include <QRadioButton>
@@ -46,6 +51,11 @@
 #include <QItemEditorFactory>
 #include <QHeaderView>
 #include <QTreeView>
+#include <QMimeData>
+#include <QStringListModel>
+#include <QListView>
+#include <QDialogButtonBox>
+#include <QGroupBox>
 
 #include <QPrintPreviewWidget>
 #include <QPageSetupDialog>
@@ -54,8 +64,8 @@
 #include <QFormLayout>
 #include <QProgressBar>
 #include <QFuture>
-#include <QtConcurrentRun>
 #include <QFutureWatcher>
+#include <QtConcurrentRun>
 
 #include "DkWidgets.h"
 #include "DkViewPort.h"
@@ -67,57 +77,25 @@ namespace nmc {
 // needed because of http://stackoverflow.com/questions/1891744/pyqt4-qspinbox-selectall-not-working-as-expected 
 // and http://qt-project.org/forums/viewthread/8590
 class DkSelectAllLineEdit : public QLineEdit {
-	public:
-		DkSelectAllLineEdit(QWidget* parent = 0) : QLineEdit(parent) {selectOnMousePressEvent = false;};
-
-	protected:
-		void focusInEvent(QFocusEvent *event) {
-			QLineEdit::focusInEvent(event);
-			selectAll();
-			selectOnMousePressEvent = true;
-		}
-
-		void mousePressEvent(QMouseEvent *event) {
-			QLineEdit::mousePressEvent(event);
-			if (selectOnMousePressEvent) {
-				selectAll();
-				selectOnMousePressEvent = false;
-			}
-		}
-	private:
-		bool selectOnMousePressEvent; 
-};
-
-class DkMessageBox : public QDialog {
-	Q_OBJECT
-
 public:
-	DkMessageBox(QMessageBox::Icon icon, 
-		const QString& title, 
-		const QString& text, 
-		QMessageBox::StandardButtons buttons = QMessageBox::NoButton,
-		QWidget* parent = 0, 
-		Qt::WindowFlags f = Qt::Dialog);
-	DkMessageBox(QWidget* parent = 0);
-
-	~DkMessageBox();
-
-	virtual void setVisible(bool visible);
-
-public slots:
-	void buttonClicked(QAbstractButton* button);
-	int exec();
+	DkSelectAllLineEdit(QWidget* parent = 0) : QLineEdit(parent) {selectOnMousePressEvent = false;};
 
 protected:
-	
-	QLabel* iconLabel;
-	QLabel* textLabel;
-	QMessageBox::Icon icon;
-	QDialogButtonBox* buttonBox;
-	QCheckBox* showAgain;
+	void focusInEvent(QFocusEvent *event) {
+		QLineEdit::focusInEvent(event);
+		selectAll();
+		selectOnMousePressEvent = true;
+	}
 
-	void createLayout(const QMessageBox::Icon& userIcon, const QString& userText, QMessageBox::StandardButtons buttons);
-	void updateSize();
+	void mousePressEvent(QMouseEvent *event) {
+		QLineEdit::mousePressEvent(event);
+		if (selectOnMousePressEvent) {
+			selectAll();
+			selectOnMousePressEvent = false;
+		}
+	}
+private:
+	bool selectOnMousePressEvent; 
 };
 
 class DkSelectAllDoubleSpinBox : public QDoubleSpinBox {
@@ -132,7 +110,7 @@ class DkSplashScreen : public QDialog {
 	Q_OBJECT
 
 public:
-	DkSplashScreen(QWidget* parent = 0, Qt::WFlags flags = 0);
+	DkSplashScreen(QWidget* parent = 0, Qt::WindowFlags flags = 0);
 	~DkSplashScreen() {};
 
 	//protected:
@@ -250,7 +228,11 @@ public:
 public slots:
 	void on_addButton_clicked();
 	void on_deleteButton_clicked();
+	void on_runButton_clicked();
 	virtual void accept();
+
+signals:
+	void openWithSignal(QAction* act);
 
 protected:
 	DkAppManager* manager;
@@ -334,7 +316,7 @@ class DkResizeDialog : public QDialog {
 
 public:
 	DkResizeDialog(QWidget* parent = 0, Qt::WindowFlags flags = 0);
-	~DkResizeDialog();
+	~DkResizeDialog() {};
 
 	enum{ipl_nearest, ipl_area, ipl_linear, ipl_cubic, ipl_lanczos, ipl_end};
 	enum{size_pixel, size_percent, size_end};
@@ -343,7 +325,7 @@ public:
 
 	void setImage(QImage img) {
 		this->img = img;
-		initBoxes();
+		initBoxes(true);
 		updateSnippets();
 		drawPreview();
 		wPixelEdit->selectAll();
@@ -398,6 +380,9 @@ protected slots:
 		QDialog::setVisible(visible);
 	}
 
+public slots:
+	virtual void accept();
+
 protected:
 	int leftSpacing;
 	int margin;
@@ -423,6 +408,7 @@ protected:
 	QDoubleSpinBox* resolutionEdit;
 	QComboBox* resUnitBox;
 	QCheckBox* resampleCheck;
+	QCheckBox* gammaCorrection;
 	QComboBox* resampleBox;
 
 	float exifDpi;
@@ -430,7 +416,7 @@ protected:
 	QVector<float> resFactor;
 
 	void init();
-	void initBoxes();
+	void initBoxes(bool updateSettings = false);
 	void createLayout();
 	void updateSnippets();
 	void updateHeight();
@@ -500,7 +486,6 @@ public:
 	TreeItem* parent() const;
 	TreeItem* find(const QVariant& value, int column);
 	void setParent(TreeItem* parent);
-
 
 private:
 	QVector<TreeItem*> childItems;
@@ -668,7 +653,7 @@ public:
 	};
 
 	DkPrintPreviewDialog(QImage img, float dpi, QPrinter* printer = 0, QWidget* parent = 0, Qt::WindowFlags flags = 0);
-
+	void setImage(QImage img, float dpi);
 	void init();
 
 public slots:
@@ -695,6 +680,7 @@ private slots:
 
 private:
 	void setFitting(bool on);
+	void scaleImage();
 	bool isFitting() {
 		return (fitGroup->isExclusive() && (fitWidthAction->isChecked() || fitPageAction->isChecked()));
 	};
@@ -811,6 +797,43 @@ protected:
 	};
 };
 #ifdef WITH_OPENCV
+class DkUnsharpDialog : public QDialog {
+	Q_OBJECT
+
+public:
+	DkUnsharpDialog(QWidget* parent = 0, Qt::WindowFlags f = 0);
+	QImage getImage();
+
+public slots:
+	void on_sigmaSlider_valueChanged(int i);
+	void on_amountSlider_valueChanged(int i);
+	void setFile(const QFileInfo& file);
+	void setImage(const QImage& img);
+	void computePreview();
+	void reject();
+	QImage computeUnsharp(const QImage img, int sigma, int amount);
+	void unsharpFinished();
+
+signals:
+	void updateImage(QImage img);
+
+protected:
+	void createLayout();
+	void dropEvent(QDropEvent *event);
+	void dragEnterEvent(QDragEnterEvent *event);
+
+	DkBaseViewPort* viewport;
+	QLabel* preview;
+	QDialogButtonBox* buttons;
+	QFutureWatcher<QImage> unsharpWatcher;
+
+	DkSlider* sigmaSlider;
+	DkSlider* amountSlider;
+
+	bool processing;
+	QImage img;
+};
+
 class DkMosaicDialog : public QDialog {
 	Q_OBJECT
 

@@ -49,8 +49,14 @@
 #include "DkError.h"
 
 #ifdef Q_OS_WIN
-	#include <wtypes.h>
-	#include <windows.h>
+
+#include <winsock2.h>	// needed since libraw 0.16
+#include <wtypes.h>
+#include <windows.h>
+
+#include "shlwapi.h"
+#pragma comment (lib, "shlwapi.lib")
+
 #else
 	#include <time.h>
 #endif
@@ -83,6 +89,7 @@ enum morphTypes {DK_ERODE=0, DK_DILATE};
 enum DebugLevel {DK_NONE=0,DK_WARNING, DK_MODULE, DK_DEBUG_A, DK_DEBUG_B, DK_DEBUG_C, DK_DEBUG_ALL};
 enum SpeedLebel {DK_NO_SPEED_UP=0, DK_SPEED_UP, DK_APPROXIMATE};
 
+
 /**
  * This class contains general functions which are useful.
  **/
@@ -92,6 +99,43 @@ private:
 	static int debugLevel;
 
 public:
+
+
+#ifdef WIN32
+	
+	/**
+	 * Logical string compare function.
+	 * This function is used to sort:
+	 * a1.png
+	 * a2.png
+	 * a10.png
+	 * instead of:
+	 * a1.png
+	 * a10.png
+	 * a2.png
+	 * @param lhs left string
+	 * @param rhs right string
+	 * @return bool true if left string < right string
+	 **/ 
+	static bool wCompLogic(const std::wstring & lhs, const std::wstring & rhs);
+#endif
+
+	static bool compLogicQString(const QString & lhs, const QString & rhs);
+
+	static bool compFilename(const QFileInfo & lhf, const QFileInfo & rhf);
+
+	static bool compFilenameInv(const QFileInfo & lhf, const QFileInfo & rhf);
+
+	static bool compDateCreated(const QFileInfo& lhf, const QFileInfo& rhf);
+
+	static bool compDateCreatedInv(const QFileInfo& lhf, const QFileInfo& rhf);
+
+	static bool compDateModified(const QFileInfo& lhf, const QFileInfo& rhf);
+
+	static bool compDateModifiedInv(const QFileInfo& lhf, const QFileInfo& rhf);
+
+	static bool compRandom(const QFileInfo& lhf, const QFileInfo& rhf);
+
 
 	/**
 	 * Sleeps n ms.
@@ -120,23 +164,6 @@ public:
 
 		return "rgba(" + QString::number(col.red()) + "," + QString::number(col.green()) + "," + QString::number(col.blue()) + "," + QString::number((float)col.alpha()/255.0f*100.0f) + "%)";
 	};
-
-	static QPixmap colorizePixmap(const QPixmap& icon, const QColor& col) {
-
-		if (icon.isNull())
-			return icon;
-
-		QPixmap glow = icon.copy();
-		QPixmap sGlow = glow.copy();
-		sGlow.fill(col);
-		sGlow.setAlphaChannel(glow.alphaChannel());
-
-		QPainter painter(&glow);
-		painter.setOpacity(0.5);
-		painter.drawPixmap(glow.rect(), sGlow);
-
-		return glow;
-	}
 
 	static QString readableByte(float bytes) {
 		
@@ -341,7 +368,30 @@ public:
 		return stringify(rounded/std::pow(10,n));
 	};
 
-	static QString convertDate(const QString& date, const QFileInfo& file = QFileInfo()) {
+	static QDateTime convertDate(const QString& date, const QFileInfo& file = QFileInfo()) {
+
+		// convert date
+		QDateTime dateCreated;
+		QStringList dateSplit = date.split(QRegExp("[/: \t]"));
+
+		if (dateSplit.size() >= 3) {
+
+			QDate dateV = QDate(dateSplit[0].toInt(), dateSplit[1].toInt(), dateSplit[2].toInt());
+			QTime time;
+
+			if (dateSplit.size() >= 6)
+				time = QTime(dateSplit[3].toInt(), dateSplit[4].toInt(), dateSplit[5].toInt());
+
+			dateCreated = QDateTime(dateV, time);
+		}
+		else if (file.exists())
+			dateCreated = file.created();
+
+		return dateCreated;
+	};
+
+	static QString convertDateString(const QString& date, const QFileInfo& file = QFileInfo()) {
+		
 		// convert date
 		QString dateConverted;
 		QStringList dateSplit = date.split(QRegExp("[/: \t]"));
@@ -366,15 +416,18 @@ public:
 		return dateConverted;
 	}
 
-#ifdef Q_WS_WIN
-	static LPCWSTR stringToWchar(std::string str) {
-		wchar_t *wChar = new wchar_t[(int)str.length()+1];
-		size_t convertedChars = 0;
-		mbstowcs_s(&convertedChars, wChar, str.length()+1, str.c_str(), _TRUNCATE);
-		//mbstowcs(wChar, str.c_str(), str.length()+1);
+	static std::wstring qStringToStdWString(const QString &str);
+	static QString stdWStringToQString(const std::wstring &str);
 
-		return (LPCWSTR)wChar;
-	};
+#ifdef WIN32
+	//static LPCWSTR stringToWchar(std::string str) {
+	//	wchar_t *wChar = new wchar_t[(int)str.length()+1];
+	//	size_t convertedChars = 0;
+	//	mbstowcs_s(&convertedChars, wChar, str.length()+1, str.c_str(), _TRUNCATE);
+	//	//mbstowcs(wChar, str.c_str(), str.length()+1);
+
+	//	return (LPCWSTR)wChar;
+	//};
 #endif
 
 #ifdef Q_WS_X11

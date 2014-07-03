@@ -44,7 +44,7 @@
 //#include "DkUtils.h"
 //#include "DkTimer.h"
 
-#include <QtGui/QApplication>
+#include <QApplication>
 #include <QFileInfo>
 #include <QProcess>
 #include <QTranslator>
@@ -53,7 +53,12 @@
 #include <iostream>
 #include <cassert>
 
-#ifdef Q_WS_WIN
+#ifdef WIN32
+#include <shlobj.h>
+#endif
+
+
+#ifdef WIN32
 int main(int argc, wchar_t *argv[]) {
 #else
 int main(int argc, char *argv[]) {
@@ -71,23 +76,23 @@ int main(int argc, char *argv[]) {
 	QCoreApplication::setOrganizationName("nomacs");
 	QCoreApplication::setOrganizationDomain("http://www.nomacs.org");
 	QCoreApplication::setApplicationName("Image Lounge");
-
+	
 	QSettings settings;
 	int mode = settings.value("AppSettings/appMode", nmc::DkSettings::app.appMode).toInt();
 	nmc::DkSettings::app.currentAppMode = mode;
 
 	// NOTE: raster option destroys the frameless view on mac
 	// but raster is so much faster when zooming
-#ifndef Q_WS_MAC
+#if !defined(Q_WS_MAC) && !defined(QT5)
 	QApplication::setGraphicsSystem("raster");
-#else
+#elif !defined(QT5)
 	if (mode != nmc::DkSettings::mode_frameless)
 		QApplication::setGraphicsSystem("raster");
 #endif
 
-
 	QApplication a(argc, (char**)argv);
 	QStringList args = a.arguments();
+	nmc::DkSettings::initFileFilters();
 
 	//// pong --------------------------------------------------------------------
 	//nmc::DkPong *p = new nmc::DkPong();
@@ -106,13 +111,27 @@ int main(int argc, char *argv[]) {
 
 
 	//QSettings settings;
+	QDir storageLocation;
+#ifdef  WIN32
+	TCHAR szPath[MAX_PATH];
+	if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_COMMON_APPDATA, NULL, 0, szPath))) {
+		QString path = szPath;
+		path += "/" + QCoreApplication::organizationName() + "/translations/"; 
+		storageLocation = QDir(path);
+	}
+#else
+	storageLocation = QDir(QDesktopServices::storageLocation(QDesktopServices::DataLocation)+"/translations/");
+#endif //  WIN32
+
 	QString translationName = "nomacs_"+ settings.value("GlobalSettings/language", nmc::DkSettings::global.language).toString() + ".qm";
 
 	QTranslator translator;
-	if (!translator.load(translationName, qApp->applicationDirPath())) {
-		QDir appDir = QDir(qApp->applicationDirPath());
-		if (!translator.load(translationName, appDir.filePath("../share/nomacs/translations/")) && !translationName.contains("_en"))
-			qDebug() << "unable to load translation: " << translationName;
+	if (!storageLocation.exists() || !translator.load(translationName, qApp->applicationDirPath())) {
+		if (!translator.load(translationName, qApp->applicationDirPath())) {
+			QDir appDir = QDir(qApp->applicationDirPath());
+			if (!translator.load(translationName, appDir.filePath("../share/nomacs/translations/")) && !translationName.contains("_en"))
+				qDebug() << "unable to load translation: " << translationName;
+		}
 	}
 	a.installTranslator(&translator);
 	
@@ -128,7 +147,7 @@ int main(int argc, char *argv[]) {
 		w = static_cast<nmc::DkNoMacs*> (new nmc::DkNoMacsIpl());	// slice it
 
 	if (args.size() > 1)
-		w->loadFile(QFileInfo(args[1]), true);	// update folder + be silent
+		w->loadFile(QFileInfo(args[1]));	// update folder + be silent
 
 	int fullScreenMode = settings.value("AppSettings/currentAppMode", nmc::DkSettings::app.currentAppMode).toInt();
 
@@ -145,7 +164,7 @@ int main(int argc, char *argv[]) {
 	QObject::connect(osxEventFilter, SIGNAL(loadFile(const QFileInfo&)),
 		w, SLOT(loadFile(const QFileInfo&)));
 #endif
-		
+
 	int rVal = a.exec();
 	delete w;	// we need delete so that settings are saved (from destructors)
 

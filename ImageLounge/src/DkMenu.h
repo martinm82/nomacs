@@ -28,14 +28,15 @@
 #pragma once
 
 
-#include <QtGui/QAction>
-#include <QtGui/QMenuBar>
+#include <QAction>
+#include <QMenuBar>
 
-#include <QtCore/QFileInfo>
-#include <QtCore/QList>
-#include <QtCore/QObject>
-#include <QtCore/QPointer>
-#include <QtCore/QTimer>
+#include <QFileInfo>
+#include <QList>
+#include <QObject>
+#include <QPointer>
+#include <QTimer>
+#include <QStringBuilder>
 
 #include "DkNetwork.h"
 #include "DkTimer.h"
@@ -171,18 +172,18 @@ public slots:
 //			DWORD dAttr = GetFileAttributesW(wDirName);
 //
 //			if (dAttr == INVALID_FILE_ATTRIBUTES) {
-//				qDebug() << "folder " << file.absoluteFilePath() << " does NOT exists (WIN32 reject) " << QString::fromStdString(dt.getTotal());
+//				qDebug() << "folder " << file.absoluteFilePath() << " does NOT exists (WIN32 reject) " << dt.getTotal();
 //				continue;
 //			}
 //#endif
 			// TODO: this line is sometimes (iPhone: ducking) slow!!
 			if (!DkUtils::exists(file)) {
 				
-				qDebug() << "folder " << file.absoluteFilePath() << " does NOT exists " << QString::fromStdString(dt.getTotal());
+				qDebug() << "folder " << file.absoluteFilePath() << " does NOT exists " << dt.getTotal();
 				continue;
 			}
 
-			qDebug() << "folder exists " << QString::fromStdString(dt.getTotal());
+			qDebug() << "folder exists " << dt.getTotal();
 
 			QString title = (file.isDir()) ? file.absoluteFilePath() : file.fileName();
 
@@ -192,7 +193,7 @@ public slots:
 			QMenu::addAction(recentFileAction);
 			numItems++;
 
-			qDebug() << "item processed in: " << QString::fromStdString(dt.getTotal());
+			qDebug() << "item processed in: " << dt.getTotal();
 		}
 
 		if (numItems == 0) {

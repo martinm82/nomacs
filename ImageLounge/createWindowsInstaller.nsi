@@ -7,7 +7,7 @@
 !include "nsProcess.nsh"
 
 ; your install directories
-!define BUILD_DIR "..\build2012x86\ReallyRelease"
+; !define BUILD_DIR "..\build2012x86\ReallyRelease"
 
 !ifndef BUILD_DIR
 !define BUILD_DIR "..\build2012x64\ReallyRelease"
@@ -16,7 +16,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "nomacs - Image Lounge"
-!define PRODUCT_VERSION "1.6.3"
+!define PRODUCT_VERSION "2.0.1 Beta [x64]"
 !define PRODUCT_WEB_SITE "http://www.nomacs.org"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\nomacs.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -326,7 +326,7 @@ Function fileAssociationFinished
 	${EndIf}
 
 	${If} $webp_state == ${BST_CHECKED}
-		${registerExtension} "$INSTDIR\nomacs.exe" ".webp" "nomacs.file.xpm" "WebP Image"
+		${registerExtension} "$INSTDIR\nomacs.exe" ".webp" "nomacs.file.webp" "WebP Image"
 	${EndIf}
 	
 	; PARTIALLY SUPPORTED
@@ -500,7 +500,11 @@ Section "MainSection" SEC01#
   File "${BUILD_DIR}\QtCore4.dll"
   File "${BUILD_DIR}\QtGui4.dll"
   File "${BUILD_DIR}\QtNetwork4.dll"
+  File "${BUILD_DIR}\QtSoap27.dll"
+  File "${BUILD_DIR}\QtXml4.dll"
   File "${BUILD_DIR}\zlib1.dll"
+  File "${BUILD_DIR}\HUpnpAV.dll"
+  File "${BUILD_DIR}\HUpnp.dll"
   
   
   File "${README_DIR}\COPYRIGHT"

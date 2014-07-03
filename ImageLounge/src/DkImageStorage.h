@@ -39,7 +39,7 @@
 #pragma warning(disable: 4996)
 #endif
 
-#include <libraw/libraw.h>
+//#include <libraw/libraw.h>
 #ifdef DISABLE_LANCZOS // opencv 2.1.0 is used, does not have opencv2 includes
 #include "opencv/cv.h"
 #else
@@ -50,20 +50,33 @@
 using namespace cv;
 #endif
 
+#ifndef DllExport
+#ifdef DK_DLL_EXPORT
+#define DllExport Q_DECL_EXPORT
+#elif DK_DLL_IMPORT
+#define DllExport Q_DECL_IMPORT
+#else
+#define DllExport
+#endif
+#endif
+
 namespace nmc {
 
 /**
  * DkImage holds some basic image processing
  * methods that are generally needed.
  **/ 
-class DkImage {
+class DllExport DkImage {
 
 public:
 
 	/**< interpolation mapping OpenCV -> Qt */
 	enum{ipl_nearest, ipl_area, ipl_linear, ipl_cubic, ipl_lanczos, ipl_end};
 
-	// >NIKON: add convert functions here (to convert between the nikon images and qt) [23.1.2014 markus]
+#ifdef WIN32
+	static QImage fromWinHBITMAP(HDC hdc, HBITMAP bitmap, int w, int h);
+	static QPixmap fromWinHICON(HICON icon);
+#endif
 
 #ifdef WITH_OPENCV
 	
@@ -138,6 +151,7 @@ public:
 
 		return qImg;
 	}
+
 #endif
 
 	/**
@@ -200,72 +214,30 @@ public:
 	 * @param interpolation the interpolation method
 	 * @return QImage the resized image
 	 **/ 
-	static QImage resizeImage(const QImage img, const QSize& newSize, float factor = 1.0f, int interpolation = ipl_cubic) {
-		
-		QSize nSize = newSize;
-
-		// nothing to do
-		if (img.size() == nSize && factor == 1.0f)
-			return img;
-
-		if (factor != 1.0f)
-			nSize = QSize(img.width()*factor, img.height()*factor);
-
-		if (nSize.width() < 1 || nSize.height() < 1) {
-			return QImage();
-		}
-
-		Qt::TransformationMode iplQt;
-		switch(interpolation) {
-		case ipl_nearest:	
-		case ipl_area:		iplQt = Qt::FastTransformation; break;
-		case ipl_linear:	
-		case ipl_cubic:		
-		case ipl_lanczos:	iplQt = Qt::SmoothTransformation; break;
-		}
-#ifdef WITH_OPENCV
-
-		int ipl = CV_INTER_CUBIC;
-		switch(interpolation) {
-		case ipl_nearest:	ipl = CV_INTER_NN; break;
-		case ipl_area:		ipl = CV_INTER_AREA; break;
-		case ipl_linear:	ipl = CV_INTER_LINEAR; break;
-		case ipl_cubic:		ipl = CV_INTER_CUBIC; break;
-#ifdef DISABLE_LANCZOS
-		case ipl_lanczos:	ipl = CV_INTER_CUBIC; break;
-#else
-		case ipl_lanczos:	ipl = CV_INTER_LANCZOS4; break;
-#endif
-		}
-
-
-		try {
-			Mat resizeImage = DkImage::qImage2Mat(img);
-
-			// is the image convertible?
-			if (resizeImage.empty()) {
-				return img.scaled(newSize, Qt::IgnoreAspectRatio, iplQt);
-			}
-			else {
-
-				Mat tmp;
-				cv::resize(resizeImage, tmp, cv::Size(nSize.width(), nSize.height()), 0, 0, ipl);
-				resizeImage = tmp;
-				return DkImage::mat2QImage(resizeImage);
-			}
-
-		}catch (std::exception se) {
-
-			return QImage();
-		}
-
-#else
-
-		return img.scaled(nSize, Qt::IgnoreAspectRatio, iplQt);
-
-#endif
-	}
-
+	static QImage resizeImage(const QImage img, const QSize& newSize, float factor = 1.0f, int interpolation = ipl_cubic, bool correctGamma = true);
+	static QVector<uchar> getGamma2LinearTable();
+	static QVector<uchar> getLinear2GammaTable();
+	static void gammaToLinear(QImage& img);
+	static void linearToGamma(QImage& img);
+	static void mapGammaTable(QImage& img, const QVector<uchar>& gammaTable);
+	static QImage normImage(const QImage& img);
+	static bool normImage(QImage& img);
+		/**
+	 * Computes a 1D Gaussian filter kernel.
+	 * Generates a Gaussian kernel. The kernel's size is adjusted to
+	 * the standard deviation.
+	 * @param sigma the standard deviation of the Gaussian.
+	 * @return the gaussian kernel (CV_32FC1)
+	 **/
+	static Mat get1DGauss(double sigma);
+	static QImage autoAdjustImage(const QImage& img);
+	static bool autoAdjustImage(QImage& img);
+	static bool unsharpMask(QImage& img, float sigma = 20.0f, float weight = 1.5f);
+	static bool alphaChannelUsed(const QImage& img);
+	static QPixmap colorizePixmap(const QPixmap& icon, const QColor& col, float opacity = 0.5f);
+	static QImage createThumb(const QImage& img);
+	static QColor getMeanColor(const QImage& img);
+	static uchar findHistPeak(const int* hist, float quantile = 0.005f);
 };
 
 class DkImageStorage : public QObject {
@@ -276,7 +248,7 @@ public:
 
 	void setImage(QImage img);
 	QImage getImage(float factor = 1.0f);
-	bool hasImage() {
+	bool hasImage() const {
 		return !img.isNull();
 	}
 
